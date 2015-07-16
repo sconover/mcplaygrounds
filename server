@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+
+import argparse
+import json
+import os.path
+import subprocess
+import sys
+
+parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers(help='sub-command help')
+
+def settings_path():
+  home = os.path.expanduser("~")
+  return os.path.join(home, '.mcfunlab.json')
+
+def load_settings():
+  return json.loads(open(settings_path()).read())
+
+def ssh(command):
+  settings = load_settings()
+  parts = [
+    'ssh', '-i', settings['ec2_private_key_file'],
+    "{}@{}".format(settings['ec2_user'], settings['ec2_host']),
+    command
+  ]
+  cmd = " ".join(parts)
+  sys.stderr.write(cmd)
+  sys.stderr.write(" | ")
+  subprocess.call(parts)
+
+def use(args):
+  json_settings_str = json.dumps({
+    'ec2_private_key_file': args.ec2_private_key_file,
+    'ec2_user': args.ec2_user,
+    'ec2_host': args.ec2_host
+  }, sort_keys=True, indent=2, separators=(',', ': '))
+
+  f = open(settings_path(), 'w')
+  f.write(json_settings_str + "\n")
+  f.close()
+
+use_parser = subparsers.add_parser('use', help='use help')
+use_parser.add_argument('ec2_private_key_file', help='ec2 private key file')
+use_parser.add_argument('ec2_user', help='user to log into the host as')
+use_parser.add_argument('ec2_host', help='ec2 target host')
+use_parser.set_defaults(func=use)
+
+def check(args):
+  ssh("uname -a")
+
+check_parser = subparsers.add_parser('check', help='check help')
+check_parser.set_defaults(func=check)
+
+bootstrap_parser = subparsers.add_parser('bootstrap', help='bootstrap help')
+# bootstrap_parser.add_argument('bar', type=int, help='bar help')
+
+args = parser.parse_args()
+args.func(args)
