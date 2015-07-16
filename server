@@ -14,13 +14,20 @@ def settings_path():
   return os.path.join(home, '.mcfunlab.json')
 
 def load_settings():
-  settings = json.loads(open(settings_path()).read())
-  if !('ec2_private_key_file' in settings) ||
-    !('ec2_user' in settings) ||
-    !('ec2_host' in settings):
-    raise Exception(
+  settings_not_found_exception = Exception(
       "Required ec2 settings not found. " +
       "Please run 'server use --help' for information about what must be set up.")
+
+  if os.path.isfile(settings_path()) != True:
+    raise settings_not_found_exception
+
+  settings = json.loads(open(settings_path()).read())
+
+  if 'ec2_private_key_file' not in settings or \
+    'ec2_user' not in settings or \
+    'ec2_host' not in settings:
+    raise settings_not_found_exception
+
   return settings
 
 def ssh(command):
@@ -59,8 +66,15 @@ def check(args):
 check_parser = subparsers.add_parser('check', help='check help')
 check_parser.set_defaults(func=check)
 
+
+def bootstrap(args):
+  ssh("sudo apt-get update")
+  ssh("sudo apt-get install build-essential git htop maven openjdk-7-jdk python-pip python-dev tmux -y")
+  ssh("file CanaryMod/.git || git clone https://github.com/CanaryModTeam/CanaryMod")
+  ssh("file CanaryRaspberryJuice/.git || git clone https://github.com/sconover/CanaryRaspberryJuice")
+
 bootstrap_parser = subparsers.add_parser('bootstrap', help='bootstrap help')
-# bootstrap_parser.add_argument('bar', type=int, help='bar help')
+bootstrap_parser.set_defaults(func=bootstrap)
 
 args = parser.parse_args()
 args.func(args)
