@@ -14,7 +14,14 @@ def settings_path():
   return os.path.join(home, '.mcfunlab.json')
 
 def load_settings():
-  return json.loads(open(settings_path()).read())
+  settings = json.loads(open(settings_path()).read())
+  if !('ec2_private_key_file' in settings) ||
+    !('ec2_user' in settings) ||
+    !('ec2_host' in settings):
+    raise Exception(
+      "Required ec2 settings not found. " +
+      "Please run 'server use --help' for information about what must be set up.")
+  return settings
 
 def ssh(command):
   settings = load_settings()
@@ -24,9 +31,10 @@ def ssh(command):
     command
   ]
   cmd = " ".join(parts)
-  sys.stderr.write(cmd)
-  sys.stderr.write(" | ")
-  subprocess.call(parts)
+  print "> " + cmd
+  sys.stderr.write("< ")
+  if subprocess.call(parts)!=0:
+    raise Exception("FAILED: {}".format(cmd))
 
 def use(args):
   json_settings_str = json.dumps({
