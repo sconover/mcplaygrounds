@@ -32,14 +32,15 @@ def load_settings():
 
 def ssh(command):
   settings = load_settings()
+  user_at_host = "{}@{}".format(settings['ec2_user'], settings['ec2_host'])
   parts = [
     'ssh', '-i', settings['ec2_private_key_file'],
-    "{}@{}".format(settings['ec2_user'], settings['ec2_host']),
+    user_at_host,
     command
   ]
   cmd = " ".join(parts)
-  print "> " + cmd
-  sys.stderr.write("< ")
+  print "> {} {}".format(user_at_host, cmd)
+  sys.stderr.write("< {} ".format(user_at_host))
   if subprocess.call(parts)!=0:
     raise Exception("FAILED: {}".format(cmd))
 
