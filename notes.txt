@@ -1,3 +1,12 @@
 add to dotfile:
   repo urls + branches to use for various repos
 
+commands:
+  print-settings
+  set key value
+    ...must be a valid setting
+    ...regex validation?
+
+keep a "data" dir that separated from all the code and artifacts,
+that contains any human work, that we symlink into from elsewhere.
+  e.g. code and other written artifacts

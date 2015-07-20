@@ -65,6 +65,10 @@ def use(args):
   f.write(json_settings_str + "\n")
   f.close()
 
+def add_simple_subparser(f, command_name):
+  p = subparsers.add_parser(command_name, help='{} help'.format(command_name))
+  p.set_defaults(func=f)
+
 use_parser = subparsers.add_parser('use', help='use help')
 use_parser.add_argument('ec2_private_key_file', help='ec2 private key file')
 use_parser.add_argument('ec2_user', help='user to log into the host as')
@@ -73,11 +77,7 @@ use_parser.set_defaults(func=use)
 
 def check(args):
   ssh_exec("uname -a")
-  print ssh_get("uname -a")
-
-check_parser = subparsers.add_parser('check', help='check help')
-check_parser.set_defaults(func=check)
-
+add_simple_subparser(check, "check")
 
 def bootstrap(args):
   ssh_exec_all([
@@ -85,20 +85,25 @@ def bootstrap(args):
     "sudo apt-get update",
     "sudo apt-get install build-essential git gradle htop maven openjdk-7-jdk python-pip python-dev tmux -y"
   ])
-  ssh("file RaspberryJuiceSpongePlugin/.git || git clone https://github.com/sconover/RaspberryJuiceSpongePlugin")
-
-bootstrap_parser = subparsers.add_parser('bootstrap', help='bootstrap help')
-bootstrap_parser.set_defaults(func=bootstrap)
-
+  ssh_exec("file RaspberryJuiceSpongePlugin/.git || git clone https://github.com/sconover/RaspberryJuiceSpongePlugin")
+add_simple_subparser(bootstrap, "bootstrap")
 
 def clean_code(args):
   ssh_exec_all([
     "rm -rf RaspberryJuiceSpongePlugin",
   ])
+add_simple_subparser(clean_code, "clean-code")
 
-pull_parser = subparsers.add_parser('clean-code', help='clean-code help')
-pull_parser.set_defaults(func=clean_code)
+def clean_artifacts(args):
+  ssh_exec_all([
+    "rm -rf minecraft-latest",
+  ])
+add_simple_subparser(clean_artifacts, "clean-artifacts")
 
+def clean_all(args):
+  clean_code(args)
+  clean_artifacts(args)
+add_simple_subparser(clean_all, "clean-all")
 
 def pull(args):
   ssh_exec_all([
@@ -106,10 +111,7 @@ def pull(args):
     "git pull",
     "git submodule update --init --recursive"
   ])
-
-pull_parser = subparsers.add_parser('pull', help='pull help')
-pull_parser.set_defaults(func=pull)
-
+add_simple_subparser(pull, "pull")
 
 def build_minecraft_gradle(args):
   ssh_exec_all([
@@ -117,9 +119,7 @@ def build_minecraft_gradle(args):
     "time ./gradlew setupDecompWorkspace --refresh-dependencies",
     "time ./gradlew"
   ])
-
-build_minecraft_gradle_parser = subparsers.add_parser('build-minecraft-gradle', help='build-minecraft-gradle help')
-build_minecraft_gradle_parser.set_defaults(func=build_minecraft_gradle)
+add_simple_subparser(build_minecraft_gradle, "build-minecraft-gradle")
 
 def populate_minecraft_latest(args):
   sponge_build_dir = "RaspberryJuiceSpongePlugin/submodules/Sponge/build/libs/"
@@ -133,30 +133,22 @@ def populate_minecraft_latest(args):
     "mkdir {}".format(latest_build_dir),
     "cp {} {}".format(new_executable_jar, os.path.join(latest_build_dir, latest_minecraft_server_jar_name)),
     "cd {}".format(latest_build_dir),
-    "java -jar {} install".format(latest_minecraft_server_jar_name)
+    "time java -jar {} install".format(latest_minecraft_server_jar_name),
+    "ls -lh ."
   ])
+add_simple_subparser(populate_minecraft_latest, "populate-minecraft-latest")
 
-populate_minecraft_latest_parser = subparsers.add_parser('populate-minecraft-latest', help='populate-minecraft-latest help')
-populate_minecraft_latest_parser.set_defaults(func=populate_minecraft_latest)
-
-
-def build_minecraft(args):
+def build_minecraft_server(args):
   build_minecraft_gradle(args)
   populate_minecraft_latest(args)
-
-build_minecraft_parser = subparsers.add_parser('build-minecraft', help='build-minecraft help')
-build_minecraft_parser.set_defaults(func=build_minecraft)
-
+add_simple_subparser(build_minecraft_server, "build-minecraft-server")
 
 def build_raspberry_juice_plugin(args):
   ssh_exec_all([
     "cd RaspberryJuiceSpongePlugin",
     "time gradle"
   ])
-
-build_raspberry_juice_plugin_parser = subparsers.add_parser('build-raspberry-juice-plugin', help='build-raspberry-juice-plugin help')
-build_raspberry_juice_plugin_parser.set_defaults(func=build_raspberry_juice_plugin)
-
+add_simple_subparser(build_raspberry_juice_plugin, "build-raspberry-juice-plugin")
 
 args = parser.parse_args()
 args.func(args)
