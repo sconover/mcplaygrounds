@@ -1,0 +1,3 @@
+add to dotfile:
+  repo urls + branches to use for various repos
+

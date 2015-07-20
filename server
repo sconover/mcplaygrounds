@@ -11,7 +11,7 @@ subparsers = parser.add_subparsers(help='sub-command help')
 
 def settings_path():
   home = os.path.expanduser("~")
-  return os.path.join(home, '.mcfunlab.json')
+  return os.path.join(home, '.mc-class-server-ec2.json')
 
 def load_settings():
   settings_not_found_exception = Exception(
@@ -30,19 +30,29 @@ def load_settings():
 
   return settings
 
-def ssh(command):
+def ssh_exec_all(commands):
+  ssh_exec(" && ".join(commands))
+
+def ssh_command_parts(remote_command):
   settings = load_settings()
   user_at_host = "{}@{}".format(settings['ec2_user'], settings['ec2_host'])
   parts = [
     'ssh', '-i', settings['ec2_private_key_file'],
     user_at_host,
-    command
+    remote_command
   ]
+  return parts
+
+def ssh_exec(remote_command):
+  parts = ssh_command_parts(remote_command)
   cmd = " ".join(parts)
-  print "> {} {}".format(user_at_host, cmd)
-  sys.stderr.write("< {} ".format(user_at_host))
+  print "> {}".format(cmd)
+  sys.stderr.write("< ")
   if subprocess.call(parts)!=0:
     raise Exception("FAILED: {}".format(cmd))
+
+def ssh_get(remote_command):
+  return subprocess.check_output(ssh_command_parts(remote_command)).strip()
 
 def use(args):
   json_settings_str = json.dumps({
@@ -62,20 +72,91 @@ use_parser.add_argument('ec2_host', help='ec2 target host')
 use_parser.set_defaults(func=use)
 
 def check(args):
-  ssh("uname -a")
+  ssh_exec("uname -a")
+  print ssh_get("uname -a")
 
 check_parser = subparsers.add_parser('check', help='check help')
 check_parser.set_defaults(func=check)
 
 
 def bootstrap(args):
-  ssh("sudo apt-get update")
-  ssh("sudo apt-get install build-essential git htop maven openjdk-7-jdk python-pip python-dev tmux -y")
-  ssh("file CanaryMod/.git || git clone https://github.com/CanaryModTeam/CanaryMod")
-  ssh("file CanaryRaspberryJuice/.git || git clone https://github.com/sconover/CanaryRaspberryJuice")
+  ssh_exec_all([
+    "sudo add-apt-repository ppa:cwchien/gradle", # need a modern gradle
+    "sudo apt-get update",
+    "sudo apt-get install build-essential git gradle htop maven openjdk-7-jdk python-pip python-dev tmux -y"
+  ])
+  ssh("file RaspberryJuiceSpongePlugin/.git || git clone https://github.com/sconover/RaspberryJuiceSpongePlugin")
 
 bootstrap_parser = subparsers.add_parser('bootstrap', help='bootstrap help')
 bootstrap_parser.set_defaults(func=bootstrap)
+
+
+def clean_code(args):
+  ssh_exec_all([
+    "rm -rf RaspberryJuiceSpongePlugin",
+  ])
+
+pull_parser = subparsers.add_parser('clean-code', help='clean-code help')
+pull_parser.set_defaults(func=clean_code)
+
+
+def pull(args):
+  ssh_exec_all([
+    "cd RaspberryJuiceSpongePlugin",
+    "git pull",
+    "git submodule update --init --recursive"
+  ])
+
+pull_parser = subparsers.add_parser('pull', help='pull help')
+pull_parser.set_defaults(func=pull)
+
+
+def build_minecraft_gradle(args):
+  ssh_exec_all([
+    "cd RaspberryJuiceSpongePlugin/submodules/Sponge",
+    "time ./gradlew setupDecompWorkspace --refresh-dependencies",
+    "time ./gradlew"
+  ])
+
+build_minecraft_gradle_parser = subparsers.add_parser('build-minecraft-gradle', help='build-minecraft-gradle help')
+build_minecraft_gradle_parser.set_defaults(func=build_minecraft_gradle)
+
+def populate_minecraft_latest(args):
+  sponge_build_dir = "RaspberryJuiceSpongePlugin/submodules/Sponge/build/libs/"
+  new_executable_jar = os.path.join(sponge_build_dir, ssh_get("ls {} | egrep '^sponge-' | egrep -v '(javadoc|release|sources)'".format(sponge_build_dir)))
+
+  latest_build_dir = "minecraft-latest"
+  latest_minecraft_server_jar_name = "sponge-minecraft-server.jar"
+
+  ssh_exec_all([
+    "rm -rf {}".format(latest_build_dir),
+    "mkdir {}".format(latest_build_dir),
+    "cp {} {}".format(new_executable_jar, os.path.join(latest_build_dir, latest_minecraft_server_jar_name)),
+    "cd {}".format(latest_build_dir),
+    "java -jar {} install".format(latest_minecraft_server_jar_name)
+  ])
+
+populate_minecraft_latest_parser = subparsers.add_parser('populate-minecraft-latest', help='populate-minecraft-latest help')
+populate_minecraft_latest_parser.set_defaults(func=populate_minecraft_latest)
+
+
+def build_minecraft(args):
+  build_minecraft_gradle(args)
+  populate_minecraft_latest(args)
+
+build_minecraft_parser = subparsers.add_parser('build-minecraft', help='build-minecraft help')
+build_minecraft_parser.set_defaults(func=build_minecraft)
+
+
+def build_raspberry_juice_plugin(args):
+  ssh_exec_all([
+    "cd RaspberryJuiceSpongePlugin",
+    "time gradle"
+  ])
+
+build_raspberry_juice_plugin_parser = subparsers.add_parser('build-raspberry-juice-plugin', help='build-raspberry-juice-plugin help')
+build_raspberry_juice_plugin_parser.set_defaults(func=build_raspberry_juice_plugin)
+
 
 args = parser.parse_args()
 args.func(args)
