@@ -71,9 +71,8 @@ def build_minecraft_gradle(args):
     "time ./gradlew setupDecompWorkspace --refresh-dependencies",
     "time ./gradlew"
   ])
-add_simple_subparser(build_minecraft_gradle)
 
-def populate_minecraft_latest(args):
+def populate_minecraft_latest_with_minecraft_server(args):
   sponge_build_dir = "RaspberryJuiceSpongePlugin/submodules/Sponge/build/libs/"
   new_executable_jar = os.path.join(sponge_build_dir, ssh_get("ls {} | egrep '^sponge-' | egrep -v '(javadoc|release|sources)'".format(sponge_build_dir)))
 
@@ -85,19 +84,37 @@ def populate_minecraft_latest(args):
     "time java -jar {} install".format(const.MINECRAFT_SERVER_JAR_NAME),
     "ls -lh ."
   ])
-add_simple_subparser(populate_minecraft_latest)
 
 def build_minecraft_server(args):
   build_minecraft_gradle(args)
-  populate_minecraft_latest(args)
+  populate_minecraft_latest_with_minecraft_server(args)
 add_simple_subparser(build_minecraft_server)
 
-def build_raspberry_juice_plugin(args):
+def build_raspberry_juice_plugin_gradle(args):
   ssh_exec_all([
     "cd RaspberryJuiceSpongePlugin",
-    "time gradle"
+    "time gradle --no-rebuild :build"
   ])
+
+def populate_minecraft_latest_with_raspberry_juice_plugin(args):
+  new_plugin_jar = ssh_get("ls RaspberryJuiceSpongePlugin/build/libs/RaspberryJuiceSpongePlugin*.jar")
+  mods_dir = os.path.join(const.MINECRAFT_LATEST_DIR, "mods")
+  ssh_exec_all([
+    "rm -rf {}".format(mods_dir),
+    "mkdir -p {}".format(mods_dir),
+    "cp {} {}".format(new_plugin_jar, mods_dir),
+    "ls -lh {}".format(mods_dir)
+  ])
+
+def build_raspberry_juice_plugin(args):
+  build_raspberry_juice_plugin_gradle(args)
+  populate_minecraft_latest_with_raspberry_juice_plugin(args)
 add_simple_subparser(build_raspberry_juice_plugin)
+
+def build(args):
+  build_minecraft_server(args)
+  build_raspberry_juice_plugin(args)
+add_simple_subparser(build)
 
 args = parser.parse_args()
 args.func(args)
