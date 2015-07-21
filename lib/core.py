@@ -79,11 +79,11 @@ def ssh_exec(remote_command):
 def ssh_get(remote_command):
   return subprocess.check_output(ssh_command_parts(remote_command)).strip()
 
-def scp(local_path, remote_path):
+def scp_r(local_path, remote_path):
   settings = load_settings()
   user_at_host = "{}@{}".format(settings['ec2_user'], settings['ec2_host'])
   parts = [
-    'scp', '-i', settings['ec2_private_key_file'],
+    'scp', '-i', settings['ec2_private_key_file'], '-r',
     local_path,
     "{}:{}".format(user_at_host, remote_path)
   ]
