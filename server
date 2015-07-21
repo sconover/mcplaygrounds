@@ -93,7 +93,7 @@ add_simple_subparser(build_minecraft_server)
 def build_raspberry_juice_plugin_gradle(args):
   ssh_exec_all([
     "cd RaspberryJuiceSpongePlugin",
-    "time gradle --no-rebuild :build"
+    "time gradle --no-rebuild :clean :build"
   ])
 
 def populate_minecraft_latest_with_raspberry_juice_plugin(args):

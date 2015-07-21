@@ -22,7 +22,7 @@ def pdir(playground_name):
   return "playgrounds/{}".format(playground_name)
 
 def copy_minecraft_server_files(playground_name):
-  ssh_exec("file {}/minecraft-server || (mkdir {}/minecraft-server && cp -R {}/ {}/minecraft-server/)".format(
+  ssh_exec("file {}/minecraft-server || (mkdir {}/minecraft-server && cp -R {}/. {}/minecraft-server/)".format(
     pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
 
 def stage_overlay_files(playground_name):
