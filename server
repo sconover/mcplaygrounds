@@ -3,12 +3,14 @@
 import argparse
 import os.path
 
+from lib import const
 from lib.core import ssh_exec, ssh_exec_all, ssh_get, save_settings
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(help='sub-command help')
 
-def add_simple_subparser(f, command_name):
+def add_simple_subparser(f):
+  command_name = f.__name__.replace("_", "-")
   p = subparsers.add_parser(command_name, help='{} help'.format(command_name))
   p.set_defaults(func=f)
 
@@ -27,7 +29,7 @@ use_parser.set_defaults(func=use)
 
 def check(args):
   ssh_exec("uname -a")
-add_simple_subparser(check, "check")
+add_simple_subparser(check)
 
 def bootstrap(args):
   ssh_exec_all([
@@ -36,24 +38,24 @@ def bootstrap(args):
     "sudo apt-get install build-essential git gradle htop maven openjdk-7-jdk python-pip python-dev tmux -y"
   ])
   ssh_exec("file RaspberryJuiceSpongePlugin/.git || git clone https://github.com/sconover/RaspberryJuiceSpongePlugin")
-add_simple_subparser(bootstrap, "bootstrap")
+add_simple_subparser(bootstrap)
 
 def clean_code(args):
   ssh_exec_all([
     "rm -rf RaspberryJuiceSpongePlugin",
   ])
-add_simple_subparser(clean_code, "clean-code")
+add_simple_subparser(clean_code)
 
 def clean_artifacts(args):
   ssh_exec_all([
-    "rm -rf minecraft-latest",
+    "rm -rf {}".format(const.MINECRAFT_LATEST_DIR),
   ])
-add_simple_subparser(clean_artifacts, "clean-artifacts")
+add_simple_subparser(clean_artifacts)
 
 def clean_all(args):
   clean_code(args)
   clean_artifacts(args)
-add_simple_subparser(clean_all, "clean-all")
+add_simple_subparser(clean_all)
 
 def pull(args):
   ssh_exec_all([
@@ -61,7 +63,7 @@ def pull(args):
     "git pull",
     "git submodule update --init --recursive"
   ])
-add_simple_subparser(pull, "pull")
+add_simple_subparser(pull)
 
 def build_minecraft_gradle(args):
   ssh_exec_all([
@@ -69,36 +71,33 @@ def build_minecraft_gradle(args):
     "time ./gradlew setupDecompWorkspace --refresh-dependencies",
     "time ./gradlew"
   ])
-add_simple_subparser(build_minecraft_gradle, "build-minecraft-gradle")
+add_simple_subparser(build_minecraft_gradle)
 
 def populate_minecraft_latest(args):
   sponge_build_dir = "RaspberryJuiceSpongePlugin/submodules/Sponge/build/libs/"
   new_executable_jar = os.path.join(sponge_build_dir, ssh_get("ls {} | egrep '^sponge-' | egrep -v '(javadoc|release|sources)'".format(sponge_build_dir)))
 
-  latest_build_dir = "minecraft-latest"
-  latest_minecraft_server_jar_name = "sponge-minecraft-server.jar"
-
   ssh_exec_all([
-    "rm -rf {}".format(latest_build_dir),
-    "mkdir {}".format(latest_build_dir),
-    "cp {} {}".format(new_executable_jar, os.path.join(latest_build_dir, latest_minecraft_server_jar_name)),
-    "cd {}".format(latest_build_dir),
-    "time java -jar {} install".format(latest_minecraft_server_jar_name),
+    "rm -rf {}".format(const.MINECRAFT_LATEST_DIR),
+    "mkdir {}".format(const.MINECRAFT_LATEST_DIR),
+    "cp {} {}".format(new_executable_jar, os.path.join(const.MINECRAFT_LATEST_DIR, const.MINECRAFT_SERVER_JAR_NAME)),
+    "cd {}".format(const.MINECRAFT_LATEST_DIR),
+    "time java -jar {} install".format(const.MINECRAFT_SERVER_JAR_NAME),
     "ls -lh ."
   ])
-add_simple_subparser(populate_minecraft_latest, "populate-minecraft-latest")
+add_simple_subparser(populate_minecraft_latest)
 
 def build_minecraft_server(args):
   build_minecraft_gradle(args)
   populate_minecraft_latest(args)
-add_simple_subparser(build_minecraft_server, "build-minecraft-server")
+add_simple_subparser(build_minecraft_server)
 
 def build_raspberry_juice_plugin(args):
   ssh_exec_all([
     "cd RaspberryJuiceSpongePlugin",
     "time gradle"
   ])
-add_simple_subparser(build_raspberry_juice_plugin, "build-raspberry-juice-plugin")
+add_simple_subparser(build_raspberry_juice_plugin)
 
 args = parser.parse_args()
 args.func(args)

@@ -4,7 +4,10 @@ import argparse
 import os.path
 import shutil
 
+from lib import const
 from lib.core import ssh_exec, ssh_exec_all, ssh_get, save_settings, scp_r, BaseSettingsClass
+
+OVERLAY_STAGING_DIR = "/tmp/playground-overlay"
 
 class PlaygroundConfig(BaseSettingsClass):
   def __init__(self):
@@ -18,48 +21,54 @@ subparsers = parser.add_subparsers(help='sub-command help')
 def pdir(playground_name):
   return "playgrounds/{}".format(playground_name)
 
-def add_simple_subparser(f, command_name):
+def copy_minecraft_server_files(playground_name):
+  ssh_exec("file {}/minecraft-server || (mkdir {}/minecraft-server && cp -R {}/ {}/minecraft-server/)".format(
+    pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
+
+def stage_overlay_files(playground_name):
+  shutil.rmtree(OVERLAY_STAGING_DIR, ignore_errors=True)
+  shutil.copytree("playground-overlay", OVERLAY_STAGING_DIR)
+
+  config = PlaygroundConfig()
+  config.minecraft_server_port = 25565
+  config.write_to_file("{}/playground.json".format(OVERLAY_STAGING_DIR))
+
+def upload_overlay_files(playground_name):
+  scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
+
+
+
+
+def add_simple_subparser(f):
+  command_name = f.__name__.replace("_", "-")
   p = subparsers.add_parser(command_name, help='{} help'.format(command_name))
   p.set_defaults(func=f)
 
 def exists(args):
   ssh_exec("file {}".format(pdir(args.playground_name)))
-add_simple_subparser(exists, "exists")
+add_simple_subparser(exists)
 
 def status(args):
   # TODO: should be better
   ssh_exec("file {} || true".format(pdir(args.playground_name)))
-add_simple_subparser(status, "status")
+add_simple_subparser(status)
 
-def copy_minecraft_server_files(playground_name):
-  ssh_exec("file {}/minecraft-server || (mkdir {}/minecraft-server && cp -R {}/ {}/minecraft-server/)".format(
-    pdir(playground_name), pdir(playground_name), "minecraft-latest", pdir(playground_name)))
-
-def copy_overlay_files(playground_name):
-  overlay_staging_dir = "/tmp/playground-staging"
-  shutil.rmtree(overlay_staging_dir, ignore_errors=True)
-  shutil.copytree("playground-overlay", overlay_staging_dir)
-
-  config = PlaygroundConfig()
-  config.minecraft_server_port = 25565
-  config.write_to_file("{}/playground.json".format(overlay_staging_dir))
-
-  scp_r(overlay_staging_dir + "/.", pdir(playground_name))
-
+def overlay(args):
+  stage_overlay_files(args.playground_name)
+  upload_overlay_files(args.playground_name)
+add_simple_subparser(overlay)
 
 def create(args):
   ssh_exec("mkdir -p {}".format(pdir(args.playground_name)))
-
   copy_minecraft_server_files(args.playground_name)
-  copy_overlay_files(args.playground_name)
-
-add_simple_subparser(create, "create")
+  overlay(args)
+add_simple_subparser(create)
 
 def destroy(args):
   exists(args)
   # TODO: stop any processes
   ssh_exec("rm -rf {}".format(pdir(args.playground_name)))
-add_simple_subparser(destroy, "destroy")
+add_simple_subparser(destroy)
 
 args = parser.parse_args()
 args.func(args)
