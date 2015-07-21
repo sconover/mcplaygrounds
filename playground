@@ -3,7 +3,12 @@
 import argparse
 import os.path
 
-from lib.core import ssh_exec, ssh_exec_all, ssh_get, save_settings
+from lib.core import ssh_exec, ssh_exec_all, ssh_get, save_settings, scp, BaseSettingsClass
+
+class PlaygroundConfig(BaseSettingsClass):
+  def __init__(self):
+    self.minecraft_server_port = None
+    self._freeze() # no more attribute definitions are allowed
 
 parser = argparse.ArgumentParser()
 parser.add_argument('playground_name', type=str, help='help TODO')
@@ -17,7 +22,7 @@ def add_simple_subparser(f, command_name):
   p.set_defaults(func=f)
 
 def exists(args):
-  ssh_exec("file {}".format(pdir(args.playground_name)))
+  ssh_exec("file {}/.playground.json".format(pdir(args.playground_name)))
 add_simple_subparser(exists, "exists")
 
 def status(args):
@@ -27,6 +32,11 @@ add_simple_subparser(status, "status")
 
 def create(args):
   ssh_exec("mkdir -p {}".format(pdir(args.playground_name)))
+
+  config = PlaygroundConfig()
+  config.minecraft_server_port = 25565
+  config.write_to_file("/tmp/.playgound.json")
+  scp("/tmp/.playgound.json", "{}/.playground.json".format(pdir(args.playground_name)))
 add_simple_subparser(create, "create")
 
 def destroy(args):

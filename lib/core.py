@@ -3,6 +3,31 @@ import subprocess
 import sys
 import json
 
+class BaseSettingsClass(object):
+  __isfrozen = False
+  def __setattr__(self, key, value):
+      if self.__isfrozen and not hasattr(self, key):
+          raise TypeError( "%r is a frozen class" % self )
+      object.__setattr__(self, key, value)
+
+  def _freeze(self):
+      self.__isfrozen = True
+
+  def to_json(self):
+    to_serialize = self.__dict__.copy()
+    to_serialize.pop("_BaseSettingsClass__isfrozen", None)
+    return json.dumps(to_serialize, sort_keys=True, indent=2, separators=(',', ': '))
+
+  def write_to_file(self, path):
+    f = open(path, 'w')
+    f.write(self.to_json() + "\n")
+    f.close()
+
+  def load_json(self, json_str):
+    self.__dict__ = json.loads(json_str)
+
+
+
 def settings_path():
   home = os.path.expanduser("~")
   return os.path.join(home, '.mc-class-server-ec2.json')
@@ -53,3 +78,16 @@ def ssh_exec(remote_command):
 
 def ssh_get(remote_command):
   return subprocess.check_output(ssh_command_parts(remote_command)).strip()
+
+def scp(local_path, remote_path):
+  settings = load_settings()
+  user_at_host = "{}@{}".format(settings['ec2_user'], settings['ec2_host'])
+  parts = [
+    'scp', '-i', settings['ec2_private_key_file'],
+    local_path,
+    "{}:{}".format(user_at_host, remote_path)
+  ]
+  cmd = " ".join(parts)
+  print "> {}".format(cmd)
+  if subprocess.call(parts)!=0:
+    raise Exception("FAILED: {}".format(cmd))
