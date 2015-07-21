@@ -116,5 +116,9 @@ def build(args):
   build_raspberry_juice_plugin(args)
 add_simple_subparser(build)
 
+def reboot(args):
+  ssh_exec("sudo reboot")
+add_simple_subparser(reboot)
+
 args = parser.parse_args()
 args.func(args)

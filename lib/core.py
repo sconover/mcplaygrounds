@@ -19,7 +19,7 @@ class BaseSettingsClass(object):
     return d
 
   def to_json(self):
-    return json.dumps(self.to_dict(), sort_keys=True, indent=2, separators=(',', ': '))
+    return json.dumps(self.to_dict()) # intentionally all on one line
 
   def write_to_file(self, path):
     f = open(path, 'w')

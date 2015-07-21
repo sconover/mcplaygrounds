@@ -1,3 +1,11 @@
+tmux
+
+I appreciate this is an older article so you may now be aware of this, but you don't need to send-keys to launch programs within tmux panes. Instead just append your program to the split-window. eg:
+
+split-window -d -t 0 -v 'htop'
+
+============
+
 terminology: playground
 
 next: make an "env"
