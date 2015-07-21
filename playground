@@ -3,15 +3,22 @@
 import argparse
 import os.path
 import shutil
+from string import Template
 
 from lib import const
 from lib.core import ssh_exec, ssh_exec_all, ssh_get, save_settings, scp_r, BaseSettingsClass
 
-OVERLAY_STAGING_DIR = "/tmp/playground-overlay"
+OVERLAY_STAGING_DIR = "/tmp/playground-staging"
 
 class PlaygroundConfig(BaseSettingsClass):
   def __init__(self):
+    self.playground_name = None
     self.minecraft_server_port = None
+    self.minecraft_gamemode = None
+    self.minecraft_force_gamemode = None
+    self.minecraft_spawn_monsters = None
+    self.minecraft_player_idle_timeout = None
+    self.minecraft_announce_player_achievements = None
     self._freeze() # no more attribute definitions are allowed
 
 parser = argparse.ArgumentParser()
@@ -30,14 +37,28 @@ def stage_overlay_files(playground_name):
   shutil.copytree("playground-overlay", OVERLAY_STAGING_DIR)
 
   config = PlaygroundConfig()
+  config.playground_name = playground_name
   config.minecraft_server_port = 25565
+  config.minecraft_gamemode = 1 # creative
+  config.minecraft_force_gamemode = True
+  config.minecraft_spawn_monsters = False
+  config.minecraft_player_idle_timeout = 1440 # 1 day
+  config.minecraft_announce_player_achievements = False # annoying
   config.write_to_file("{}/playground.json".format(OVERLAY_STAGING_DIR))
+
+  for dirpath, dnames, fnames in os.walk(OVERLAY_STAGING_DIR):
+    for f in fnames:
+      path = os.path.join(dirpath, f)
+      if (path.endswith(".template")):
+        new_file_content = Template(open(path).read()).substitute(config.to_dict())
+        path_without_template_extension = os.path.splitext(path)[0]
+        f = open(path_without_template_extension, 'w')
+        f.write(new_file_content)
+        f.close()
+        os.remove(path)
 
 def upload_overlay_files(playground_name):
   scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
-
-
-
 
 def add_simple_subparser(f):
   command_name = f.__name__.replace("_", "-")
@@ -52,6 +73,10 @@ def status(args):
   # TODO: should be better
   ssh_exec("file {} || true".format(pdir(args.playground_name)))
 add_simple_subparser(status)
+
+def test_overlay(args):
+  stage_overlay_files(args.playground_name)
+add_simple_subparser(test_overlay)
 
 def overlay(args):
   stage_overlay_files(args.playground_name)

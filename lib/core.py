@@ -13,10 +13,13 @@ class BaseSettingsClass(object):
   def _freeze(self):
       self.__isfrozen = True
 
+  def to_dict(self):
+    d = self.__dict__.copy()
+    d.pop("_BaseSettingsClass__isfrozen", None)
+    return d
+
   def to_json(self):
-    to_serialize = self.__dict__.copy()
-    to_serialize.pop("_BaseSettingsClass__isfrozen", None)
-    return json.dumps(to_serialize, sort_keys=True, indent=2, separators=(',', ': '))
+    return json.dumps(self.to_dict(), sort_keys=True, indent=2, separators=(',', ': '))
 
   def write_to_file(self, path):
     f = open(path, 'w')

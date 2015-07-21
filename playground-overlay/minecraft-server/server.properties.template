@@ -1,0 +1,39 @@
+#Minecraft server properties
+#Tue Jul 21 05:05:55 UTC 2015
+
+motd=A Minecraft Server for ${playground_name}
+server-port=${minecraft_server_port}
+gamemode=${minecraft_gamemode}
+force-gamemode=${minecraft_force_gamemode}
+spawn-monsters=${minecraft_spawn_monsters}
+player-idle-timeout=${minecraft_player_idle_timeout}
+announce-player-achievements=${minecraft_announce_player_achievements}
+
+generator-settings=
+op-permission-level=4
+allow-nether=true
+resource-pack-hash=
+level-name=world
+enable-query=false
+allow-flight=false
+max-world-size=29999984
+level-type=DEFAULT
+enable-rcon=false
+level-seed=
+server-ip=
+network-compression-threshold=256
+max-build-height=256
+spawn-npcs=true
+white-list=false
+spawn-animals=true
+hardcore=false
+snooper-enabled=true
+online-mode=true
+resource-pack=
+pvp=true
+difficulty=1
+enable-command-block=false
+max-players=20
+max-tick-time=60000
+generate-structures=true
+view-distance=10
