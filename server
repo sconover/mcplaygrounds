@@ -1,73 +1,23 @@
 #!/usr/bin/env python
 
 import argparse
-import json
 import os.path
-import subprocess
-import sys
+
+from lib.core import ssh_exec, ssh_exec_all, ssh_get, save_settings
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(help='sub-command help')
 
-def settings_path():
-  home = os.path.expanduser("~")
-  return os.path.join(home, '.mc-class-server-ec2.json')
-
-def load_settings():
-  settings_not_found_exception = Exception(
-      "Required ec2 settings not found. " +
-      "Please run 'server use --help' for information about what must be set up.")
-
-  if os.path.isfile(settings_path()) != True:
-    raise settings_not_found_exception
-
-  settings = json.loads(open(settings_path()).read())
-
-  if 'ec2_private_key_file' not in settings or \
-    'ec2_user' not in settings or \
-    'ec2_host' not in settings:
-    raise settings_not_found_exception
-
-  return settings
-
-def ssh_exec_all(commands):
-  ssh_exec(" && ".join(commands))
-
-def ssh_command_parts(remote_command):
-  settings = load_settings()
-  user_at_host = "{}@{}".format(settings['ec2_user'], settings['ec2_host'])
-  parts = [
-    'ssh', '-i', settings['ec2_private_key_file'],
-    user_at_host,
-    remote_command
-  ]
-  return parts
-
-def ssh_exec(remote_command):
-  parts = ssh_command_parts(remote_command)
-  cmd = " ".join(parts)
-  print "> {}".format(cmd)
-  sys.stderr.write("< ")
-  if subprocess.call(parts)!=0:
-    raise Exception("FAILED: {}".format(cmd))
-
-def ssh_get(remote_command):
-  return subprocess.check_output(ssh_command_parts(remote_command)).strip()
-
-def use(args):
-  json_settings_str = json.dumps({
-    'ec2_private_key_file': args.ec2_private_key_file,
-    'ec2_user': args.ec2_user,
-    'ec2_host': args.ec2_host
-  }, sort_keys=True, indent=2, separators=(',', ': '))
-
-  f = open(settings_path(), 'w')
-  f.write(json_settings_str + "\n")
-  f.close()
-
 def add_simple_subparser(f, command_name):
   p = subparsers.add_parser(command_name, help='{} help'.format(command_name))
   p.set_defaults(func=f)
+
+def use(args):
+  save_settings({
+    'ec2_private_key_file': args.ec2_private_key_file,
+    'ec2_user': args.ec2_user,
+    'ec2_host': args.ec2_host
+  })
 
 use_parser = subparsers.add_parser('use', help='use help')
 use_parser.add_argument('ec2_private_key_file', help='ec2 private key file')

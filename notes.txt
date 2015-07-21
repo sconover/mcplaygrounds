@@ -1,3 +1,40 @@
+terminology: playground
+
+next: make an "env"
+  make a clean subset of instance commands
+    playground mike status
+    playground mike create # allocates a config.json, with port assignments, etc. scans for next available ports. creates symlinks, etc.
+    playground mike docs # merge config.json with template (w/ markdown?) in order to make instructions...should have images and such. pdf output. (pandoc)
+    playground mike overlay
+    playground mike start   # tmux
+    playground mike stop    # tmux
+    playground mike destroy I_AM_SURE
+    playground mike restart-minecraft-server #...wait for port
+    playground mike restart-ipython #...wait for port
+    playground mike backup-minecraft mike-bak-01 # check for mike-bak-01 on s3, stop, zip mc, upload to s3 ... install s3cmd for this, keep creds local.
+    playground mike restore-minecraft mike-bak-01
+  overlay settings, eula, etc
+  interpret, then scp -r
+
+separate pre- and post-ami command suites?
+
+
+then: build the plugin, and deploy to server (mods subdir)
+
+then: overlay-template capability
+
+then: tmux
+  w/ auto-restart
+
+
+then: ipython
+
+so a quick plugin deploy is just a
+  git pull
+  build plugin on server
+  copy to one or more instances
+  server restart (kill -1 server)
+
 add to dotfile:
   repo urls + branches to use for various repos
 

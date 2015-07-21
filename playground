@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+
+import argparse
+import os.path
+
+from lib.core import ssh_exec, ssh_exec_all, ssh_get, save_settings
+
+parser = argparse.ArgumentParser()
+parser.add_argument('playground_name', type=str, help='help TODO')
+subparsers = parser.add_subparsers(help='sub-command help')
+
+def pdir(playground_name):
+  return "playgrounds/{}".format(playground_name)
+
+def add_simple_subparser(f, command_name):
+  p = subparsers.add_parser(command_name, help='{} help'.format(command_name))
+  p.set_defaults(func=f)
+
+def exists(args):
+  ssh_exec("file {}".format(pdir(args.playground_name)))
+add_simple_subparser(exists, "exists")
+
+def status(args):
+  # TODO: should be better
+  ssh_exec("file {} || true".format(pdir(args.playground_name)))
+add_simple_subparser(status, "status")
+
+def create(args):
+  ssh_exec("mkdir -p {}".format(pdir(args.playground_name)))
+add_simple_subparser(create, "create")
+
+def destroy(args):
+  exists(args)
+  # TODO: stop any processes
+  ssh_exec("rm -rf {}".format(pdir(args.playground_name)))
+add_simple_subparser(destroy, "destroy")
+
+args = parser.parse_args()
+args.func(args)
