@@ -20,6 +20,7 @@ class PlaygroundConfig(BaseSettingsClass):
     self.minecraft_player_idle_timeout = None
     self.minecraft_announce_player_achievements = None
     self.raspberry_juice_sponge_plugin_port = None
+    self.ipython_notebook_server_http_port = None
     self._freeze() # no more attribute definitions are allowed
 
 parser = argparse.ArgumentParser()
@@ -33,12 +34,18 @@ def copy_minecraft_server_files(playground_name):
   ssh_exec("file {}/minecraft-server || (mkdir {}/minecraft-server && cp -R {}/. {}/minecraft-server/)".format(
     pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
 
+def prepare_ipython(playground_name):
+  ssh_exec("mkdir -p {}/ipython-notebook-root/data".format(pdir(playground_name)))
+
 def stage_overlay_files(playground_name):
   shutil.rmtree(OVERLAY_STAGING_DIR, ignore_errors=True)
   shutil.copytree("playground-overlay", OVERLAY_STAGING_DIR)
 
   config = PlaygroundConfig()
   config.playground_name = playground_name
+
+  config.ipython_notebook_server_http_port = 25564
+
   config.minecraft_server_port = 25565
   config.raspberry_juice_sponge_plugin_port = 25566
   config.minecraft_gamemode = 1 # creative
@@ -46,6 +53,7 @@ def stage_overlay_files(playground_name):
   config.minecraft_spawn_monsters = False
   config.minecraft_player_idle_timeout = 1440 # 1 day
   config.minecraft_announce_player_achievements = False # annoying
+
   config.write_to_file("{}/playground.json".format(OVERLAY_STAGING_DIR))
 
   for dirpath, dnames, fnames in os.walk(OVERLAY_STAGING_DIR):
@@ -88,6 +96,7 @@ add_simple_subparser(overlay)
 def create(args):
   ssh_exec("mkdir -p {}".format(pdir(args.playground_name)))
   copy_minecraft_server_files(args.playground_name)
+  prepare_ipython(args.playground_name)
   overlay(args)
   write_crontab(args)
 add_simple_subparser(create)
@@ -97,8 +106,9 @@ def stop(args):
 add_simple_subparser(stop)
 
 def start(args):
-  start_commands = ssh_get("crontab -l | grep '@reboot cd playgrounds/" + args.playground_name + "' | sed 's/^\@reboot //'").split("\n")
-  ssh_exec_all(start_commands)
+  start_commands = ssh_get("crontab -l | grep '@reboot cd " + pdir(args.playground_name) + "' | sed 's/^\@reboot //'").split("\n")
+  for start_command in start_commands:
+    ssh_exec(start_command)
 add_simple_subparser(start)
 
 def update(args):
@@ -131,15 +141,20 @@ def tmux_new_session_command(working_dir, session_name, command):
 
 # TODO: make this a top-level command
 
+def at_reboot_tmux_crontab_line(playground_name, subdir, tmux_session_suffix, command):
+  return "@reboot " + tmux_new_session_command(
+        pdir(playground_name) + "/" + subdir,
+        playground_name + "-" + tmux_session_suffix,
+        command)
+
 def write_crontab(args):
   crontab_lines = []
   all_config = get_all_playground_config()
   for playground_name in all_config:
     crontab_lines.append(
-      "@reboot " + tmux_new_session_command(
-        "playgrounds/{}/minecraft-server".format(playground_name),
-        playground_name + "-mc",
-        "java -jar sponge-minecraft-server.jar run"))
+      at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -jar sponge-minecraft-server.jar run"))
+    crontab_lines.append(
+      at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py"))
   f = open("/tmp/crontab", 'w')
   f.write("\n".join(crontab_lines) + "\n")
   f.close()
