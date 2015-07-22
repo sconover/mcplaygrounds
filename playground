@@ -35,7 +35,12 @@ def copy_minecraft_server_files(playground_name):
     pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
 
 def prepare_ipython(playground_name):
-  ssh_exec("mkdir -p {}/ipython-notebook-root/data".format(pdir(playground_name)))
+  ssh_exec_all([
+    "mkdir -p {}/ipython-notebook-root/data".format(pdir(playground_name)),
+    "mkdir -p {}/ipython-notebook-root/lib".format(pdir(playground_name)),
+    "rm -rf {}/ipython-notebook-root/lib/mcpi".format(pdir(playground_name)),
+    "cp -r mcpi/mcpi {}/ipython-notebook-root/lib/".format(pdir(playground_name)),
+  ])
 
 def stage_overlay_files(playground_name):
   shutil.rmtree(OVERLAY_STAGING_DIR, ignore_errors=True)
@@ -154,7 +159,7 @@ def write_crontab(args):
     crontab_lines.append(
       at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -jar sponge-minecraft-server.jar run"))
     crontab_lines.append(
-      at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "IPYTHONDIR=./ ../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py"))
+      at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py  --ipython-dir=."))
   f = open("/tmp/crontab", 'w')
   f.write("\n".join(crontab_lines) + "\n")
   f.close()

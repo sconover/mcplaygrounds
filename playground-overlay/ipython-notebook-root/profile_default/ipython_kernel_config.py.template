@@ -1,0 +1,5 @@
+c = get_config()
+c.IPKernelApp.exec_lines = [
+  "from mcpi import minecraft",
+  "def connect(): return minecraft.Minecraft.create(port=${raspberry_juice_sponge_plugin_port})"
+]
