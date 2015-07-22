@@ -5,6 +5,14 @@ goal:
 
 =============
 
+backing data up
+
+world to s3
+notebooks to git
+  also, transform notebooks to python files?
+
+=============
+
 group context...
   basic auth on the whole site (a.gpk.com)
   so, nginx proxies to ipython

@@ -41,6 +41,7 @@ def bootstrap(args):
   # TODO: externalize url's (as settings)
   ssh_exec("file RaspberryJuiceSpongePlugin/.git || git clone https://github.com/sconover/RaspberryJuiceSpongePlugin --recursive")
   ssh_exec("file ipython/.git || git clone https://github.com/ipython/ipython.git --recursive")
+  ssh_exec("file mcpi/.git || git clone https://github.com/martinohanlon/mcpi.git")
 add_simple_subparser(bootstrap)
 
 def clean_code(args):
@@ -73,6 +74,10 @@ def pull(args):
     "git pull --all",
     "git checkout 3.x",
     "git submodule update --init --recursive"
+
+    "cd ../mcpi",
+    "git pull --all",
+    "git checkout master"
   ])
 add_simple_subparser(pull)
 
