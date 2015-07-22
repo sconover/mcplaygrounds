@@ -1,3 +1,52 @@
+goal:
+  ipython running on a specified port (8888 for now)
+  make raspberry plugin port configurable
+  specify raspberry plugin port
+
+=============
+
+group context...
+  basic auth on the whole site (a.gpk.com)
+  so, nginx proxies to ipython
+    ipython subdomain per playground name
+
+dir per playground
+  a.gpk.com/foo/notebook -> ipython
+  a.gpk.com/foo/ -> instructions (static html)
+    ...still need offline instructions w/ password, etc
+  a.gpk.com is a single ip/server
+
+  ...nginx runs on port 80, normal package install, and we just reload it from time to time
+    ...put config in the "playgrounds" dir
+
+cgroup limits for ipy and mc-server...
+  oversubscribe the server...
+  just make the limits fixed (75% of resources?)? just defending against
+  one or two instances killing the server at any given time.
+
+=============
+
+python setup.py install
+pip install .[notebook]
+
+.python-virtualenv/bin/ipython notebook --no-browser --ip=0.0.0.0
+
+in playground...
+
+--notebook-dir=
+
+--port=<Integer> (NotebookApp.port
+
+--ipython-dir=<Unicode> (BaseIPythonApplication.ipython_dir)
+    Default: u''
+    The name of the IPython directory. This directory is used for logging
+    configuration (through profiles), history storage, etc. The default is
+    usually $HOME/.ipython. This option can also be specified through the
+    environment variable IPYTHONDIR.
+
+
+=============
+
 tmux
 
 I appreciate this is an older article so you may now be aware of this, but you don't need to send-keys to launch programs within tmux panes. Instead just append your program to the split-window. eg:

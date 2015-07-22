@@ -35,14 +35,18 @@ def bootstrap(args):
   ssh_exec_all([
     "sudo add-apt-repository ppa:cwchien/gradle", # need a modern gradle
     "sudo apt-get update",
-    "sudo apt-get install build-essential git gradle htop maven openjdk-7-jdk python-pip python-dev tmux -y"
+    "sudo apt-get install build-essential git gradle htop maven openjdk-7-jdk python-pip python-dev tmux -y",
+    "sudo pip install virtualenv virtualenvwrapper"
   ])
-  ssh_exec("file RaspberryJuiceSpongePlugin/.git || git clone https://github.com/sconover/RaspberryJuiceSpongePlugin")
+  # TODO: externalize url's (as settings)
+  ssh_exec("file RaspberryJuiceSpongePlugin/.git || git clone https://github.com/sconover/RaspberryJuiceSpongePlugin --recursive")
+  ssh_exec("file ipython/.git || git clone https://github.com/ipython/ipython.git --recursive")
 add_simple_subparser(bootstrap)
 
 def clean_code(args):
   ssh_exec_all([
     "rm -rf RaspberryJuiceSpongePlugin",
+    "rm -rf ipython",
   ])
 add_simple_subparser(clean_code)
 
@@ -57,10 +61,17 @@ def clean_all(args):
   clean_artifacts(args)
 add_simple_subparser(clean_all)
 
+# TODO: also, branch should be a settings
 def pull(args):
   ssh_exec_all([
     "cd RaspberryJuiceSpongePlugin",
-    "git pull",
+    "git pull --all",
+    "git checkout master",
+    "git submodule update --init --recursive",
+
+    "cd ../ipython",
+    "git pull --all",
+    "git checkout 3.x",
     "git submodule update --init --recursive"
   ])
 add_simple_subparser(pull)

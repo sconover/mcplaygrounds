@@ -19,6 +19,7 @@ class PlaygroundConfig(BaseSettingsClass):
     self.minecraft_spawn_monsters = None
     self.minecraft_player_idle_timeout = None
     self.minecraft_announce_player_achievements = None
+    self.raspberry_juice_sponge_plugin_port = None
     self._freeze() # no more attribute definitions are allowed
 
 parser = argparse.ArgumentParser()
@@ -39,6 +40,7 @@ def stage_overlay_files(playground_name):
   config = PlaygroundConfig()
   config.playground_name = playground_name
   config.minecraft_server_port = 25565
+  config.raspberry_juice_sponge_plugin_port = 25566
   config.minecraft_gamemode = 1 # creative
   config.minecraft_force_gamemode = True
   config.minecraft_spawn_monsters = False
@@ -87,11 +89,26 @@ def create(args):
   ssh_exec("mkdir -p {}".format(pdir(args.playground_name)))
   copy_minecraft_server_files(args.playground_name)
   overlay(args)
+  write_crontab(args)
 add_simple_subparser(create)
+
+def stop(args):
+  ssh_exec("lsof +D playgrounds/" + args.playground_name + " | egrep '^tmux ' | awk '{print $2}' | xargs -r kill")
+add_simple_subparser(stop)
+
+def start(args):
+  start_commands = ssh_get("crontab -l | grep '@reboot cd playgrounds/" + args.playground_name + "' | sed 's/^\@reboot //'").split("\n")
+  ssh_exec_all(start_commands)
+add_simple_subparser(start)
+
+def update(args):
+  stop(args)
+  create(args)
+add_simple_subparser(update)
 
 def destroy(args):
   exists(args)
-  # TODO: stop any processes
+  stop(args)
   ssh_exec("rm -rf {}".format(pdir(args.playground_name)))
 add_simple_subparser(destroy)
 
