@@ -73,7 +73,7 @@ def pull(args):
     "cd ../ipython",
     "git pull --all",
     "git checkout 3.x",
-    "git submodule update --init --recursive"
+    "git submodule update --init --recursive",
 
     "cd ../mcpi",
     "git pull --all",
