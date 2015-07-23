@@ -26,6 +26,9 @@ class BaseSettingsClass(object):
     f.write(self.to_json() + "\n")
     f.close()
 
+  def to_json(self):
+    return json.dumps(self.to_dict()) # intentionally all on one line
+
   def load_json(self, json_str):
     self.load_dict(json.loads(json_str))
 
@@ -38,46 +41,67 @@ class BaseSettingsClass(object):
       if getattr(self, key) == None:
         setattr(self, key, getattr(default_obj, key))
 
+def load_configs_from_file(config_class, global_defaults, label_attr, config_path):
+  label_to_config = {}
+  json_struct = json.loads(open(config_path).read())
+  defaults = global_defaults
 
-def settings_path():
+  if "default" in json_struct:
+    defaults = config_class()
+    defaults.load_dict(json_struct["default"])
+  json_struct.pop("default", None)
+
+  for label in json_struct:
+    config_struct = json_struct[label]
+    config = config_class()
+    setattr(config, label_attr, label)
+    config.load_dict(config_struct)
+    config.merge_defaults(defaults)
+    for key in config.__dict__:
+      if getattr(config, key) == None:
+        raise Exception("Required key '{}' not found in config '{}'".format(
+          key, label
+        ))
+    label_to_config[label] = config
+
+  return label_to_config
+
+def load_config(label, config_class, global_defaults, label_attr, config_path):
+  label_to_config = load_configs_from_file(config_class, global_defaults, label_attr, config_path)
+  if label not in label_to_config:
+    raise Exception("Entry '{}' not found in config file '{}'".format(
+      label, config_path
+    ))
+  return label_to_config[label]
+
+class ServerConfig(BaseSettingsClass):
+  def __init__(self):
+    self.server_label = None
+    self.ssh_options = None
+    self.user_at_host = None
+    self._freeze() # no more attribute definitions are allowed
+
+DEFAULT_CONFIG = ServerConfig()
+
+def current_server_config_path():
   home = os.path.expanduser("~")
-  return os.path.join(home, '.mc-class-server-ec2.json')
+  return os.path.join(home, '.mc-current-server.json')
 
-def save_settings(new_settings):
-  json_settings_str = json.dumps(new_settings, sort_keys=True, indent=2, separators=(',', ': '))
-  f = open(settings_path(), 'w')
-  f.write(json_settings_str + "\n")
-  f.close()
+def set_current_server_config(server_label, server_config_file):
+  server_config = load_config(server_label, ServerConfig, DEFAULT_CONFIG, 'server_label', server_config_file)
+  server_config.write_to_file(current_server_config_path())
 
-def load_settings():
-  settings_not_found_exception = Exception(
-      "Required ec2 settings not found. " +
-      "Please run 'server use --help' for information about what must be set up.")
-
-  if os.path.isfile(settings_path()) != True:
-    raise settings_not_found_exception
-
-  settings = json.loads(open(settings_path()).read())
-
-  if 'ec2_private_key_file' not in settings or \
-    'ec2_user' not in settings or \
-    'ec2_host' not in settings:
-    raise settings_not_found_exception
-
-  return settings
+def load_current_server_config():
+  server_config = ServerConfig()
+  server_config.load_json(open(current_server_config_path()).read())
+  return server_config
 
 def ssh_exec_all(commands):
   ssh_exec(" && ".join(commands))
 
 def ssh_command_parts(remote_command):
-  settings = load_settings()
-  user_at_host = "{}@{}".format(settings['ec2_user'], settings['ec2_host'])
-  parts = [
-    'ssh', '-i', settings['ec2_private_key_file'],
-    user_at_host,
-    remote_command
-  ]
-  return parts
+  server_config = load_current_server_config()
+  return ['ssh', server_config.ssh_options, server_config.user_at_host, remote_command]
 
 def ssh_exec(remote_command):
   parts = ssh_command_parts(remote_command)
@@ -91,12 +115,11 @@ def ssh_get(remote_command):
   return subprocess.check_output(ssh_command_parts(remote_command)).strip()
 
 def scp_r(local_path, remote_path):
-  settings = load_settings()
-  user_at_host = "{}@{}".format(settings['ec2_user'], settings['ec2_host'])
+  server_config = load_current_server_config()
   parts = [
-    'scp', '-i', settings['ec2_private_key_file'], '-r',
+    'scp', server_config.ssh_options, '-r',
     local_path,
-    "{}:{}".format(user_at_host, remote_path)
+    server_config.user_at_host + ":" + remote_path
   ]
   cmd = " ".join(parts)
   print "> {}".format(cmd)

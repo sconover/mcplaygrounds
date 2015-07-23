@@ -4,7 +4,7 @@ import argparse
 import os.path
 
 from lib import const
-from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, save_settings
+from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, set_current_server_config
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(help='sub-command help')
@@ -15,16 +15,11 @@ def add_simple_subparser(f):
   p.set_defaults(func=f)
 
 def use(args):
-  save_settings({
-    'ec2_private_key_file': args.ec2_private_key_file,
-    'ec2_user': args.ec2_user,
-    'ec2_host': args.ec2_host
-  })
+  set_current_server_config(args.server_label, args.server_config_file)
 
 use_parser = subparsers.add_parser('use', help='use help')
-use_parser.add_argument('ec2_private_key_file', help='ec2 private key file')
-use_parser.add_argument('ec2_user', help='user to log into the host as')
-use_parser.add_argument('ec2_host', help='ec2 target host')
+use_parser.add_argument('server_label', help='server config to use, from config file')
+use_parser.add_argument('server_config_file', help='path to server config file')
 use_parser.set_defaults(func=use)
 
 def check(args):

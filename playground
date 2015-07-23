@@ -7,7 +7,7 @@ import json
 from string import Template
 
 from lib import const
-from lib.core import ssh_exec, ssh_exec_all, ssh_get, save_settings, scp_r, BaseSettingsClass
+from lib.core import ssh_exec, ssh_exec_all, ssh_get, save_settings, scp_r, BaseSettingsClass, load_config
 
 OVERLAY_STAGING_DIR = "/tmp/playground-staging"
 
@@ -50,38 +50,8 @@ def prepare_ipython(playground_name):
     "cp -r mcpi/mcpi {}/ipython-notebook-root/lib/".format(pdir(playground_name)),
   ])
 
-def load_playground_configs_from_file(path):
-  playground_name_to_config = {}
-  json_struct = json.loads(open(path).read())
-  defaults = DEFAULT_CONFIG
-
-  if "default" in json_struct:
-    defaults = PlaygroundConfig()
-    defaults.load_dict(json_struct["default"])
-  json_struct.pop("default", None)
-
-  for playground_name in json_struct:
-    playground_config_struct = json_struct[playground_name]
-    config = PlaygroundConfig()
-    config.playground_name = playground_name
-    config.load_dict(playground_config_struct)
-    config.merge_defaults(defaults)
-    for key in config.__dict__:
-      if getattr(config, key) == None:
-        raise Exception("Required key '{}' not found in playground config '{}'".format(
-          key, playground_name
-        ))
-    playground_name_to_config[playground_name] = config
-
-  return playground_name_to_config
-
 def load_playground_config(playground_name, config_path):
-  playground_name_to_config = load_playground_configs_from_file(config_path)
-  if playground_name not in playground_name_to_config:
-    raise Exception("Playground name '{}' not found in config file '{}'".format(
-      playground_name, config_path
-    ))
-  return playground_name_to_config[playground_name]
+  return load_config(playground_name, PlaygroundConfig, DEFAULT_CONFIG, 'playground_name', config_path)
 
 def stage_overlay_files(playground_config):
   shutil.rmtree(OVERLAY_STAGING_DIR, ignore_errors=True)
