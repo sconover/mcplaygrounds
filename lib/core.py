@@ -27,8 +27,16 @@ class BaseSettingsClass(object):
     f.close()
 
   def load_json(self, json_str):
-    self.__dict__ = json.loads(json_str)
+    self.load_dict(json.loads(json_str))
 
+  def load_dict(self, d):
+    for key in d:
+      setattr(self, key, d[key])
+
+  def merge_defaults(self, default_obj):
+    for key in default_obj.__dict__:
+      if getattr(self, key) == None:
+        setattr(self, key, getattr(default_obj, key))
 
 
 def settings_path():

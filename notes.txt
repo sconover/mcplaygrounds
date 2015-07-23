@@ -1,3 +1,12 @@
+./playground foo create ~/config.json
+
+=============
+
+opening ports...
+  ...show aws console docs. don't automate ec2 api stuff. this is server-focused.
+
+=============
+
 goal:
   ipython running on a specified port (8888 for now)
   make raspberry plugin port configurable
@@ -10,6 +19,10 @@ backing data up
 world to s3
 notebooks to git
   also, transform notebooks to python files?
+
+=============
+
+user whitelist
 
 =============
 

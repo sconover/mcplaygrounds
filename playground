@@ -3,6 +3,7 @@
 import argparse
 import os.path
 import shutil
+import json
 from string import Template
 
 from lib import const
@@ -23,6 +24,13 @@ class PlaygroundConfig(BaseSettingsClass):
     self.ipython_notebook_server_http_port = None
     self._freeze() # no more attribute definitions are allowed
 
+DEFAULT_CONFIG = PlaygroundConfig()
+DEFAULT_CONFIG.minecraft_gamemode = 1 # creative
+DEFAULT_CONFIG.minecraft_force_gamemode = True
+DEFAULT_CONFIG.minecraft_spawn_monsters = False
+DEFAULT_CONFIG.minecraft_player_idle_timeout = 1440 # 1 day
+DEFAULT_CONFIG.minecraft_announce_player_achievements = False # annoying
+
 parser = argparse.ArgumentParser()
 parser.add_argument('playground_name', type=str, help='help TODO')
 subparsers = parser.add_subparsers(help='sub-command help')
@@ -42,30 +50,49 @@ def prepare_ipython(playground_name):
     "cp -r mcpi/mcpi {}/ipython-notebook-root/lib/".format(pdir(playground_name)),
   ])
 
-def stage_overlay_files(playground_name):
+def load_playground_configs_from_file(path):
+  playground_name_to_config = {}
+  json_struct = json.loads(open(path).read())
+  defaults = DEFAULT_CONFIG
+
+  if "default" in json_struct:
+    defaults = PlaygroundConfig()
+    defaults.load_dict(json_struct["default"])
+  json_struct.pop("default", None)
+
+  for playground_name in json_struct:
+    playground_config_struct = json_struct[playground_name]
+    config = PlaygroundConfig()
+    config.playground_name = playground_name
+    config.load_dict(playground_config_struct)
+    config.merge_defaults(defaults)
+    for key in config.__dict__:
+      if getattr(config, key) == None:
+        raise Exception("Required key '{}' not found in playground config '{}'".format(
+          key, playground_name
+        ))
+    playground_name_to_config[playground_name] = config
+
+  return playground_name_to_config
+
+def load_playground_config(playground_name, config_path):
+  playground_name_to_config = load_playground_configs_from_file(config_path)
+  if playground_name not in playground_name_to_config:
+    raise Exception("Playground name '{}' not found in config file '{}'".format(
+      playground_name, config_path
+    ))
+  return playground_name_to_config[playground_name]
+
+def stage_overlay_files(playground_config):
   shutil.rmtree(OVERLAY_STAGING_DIR, ignore_errors=True)
   shutil.copytree("playground-overlay", OVERLAY_STAGING_DIR)
-
-  config = PlaygroundConfig()
-  config.playground_name = playground_name
-
-  config.ipython_notebook_server_http_port = 25564
-
-  config.minecraft_server_port = 25565
-  config.raspberry_juice_sponge_plugin_port = 25566
-  config.minecraft_gamemode = 1 # creative
-  config.minecraft_force_gamemode = True
-  config.minecraft_spawn_monsters = False
-  config.minecraft_player_idle_timeout = 1440 # 1 day
-  config.minecraft_announce_player_achievements = False # annoying
-
-  config.write_to_file("{}/playground.json".format(OVERLAY_STAGING_DIR))
+  playground_config.write_to_file("{}/playground.json".format(OVERLAY_STAGING_DIR))
 
   for dirpath, dnames, fnames in os.walk(OVERLAY_STAGING_DIR):
     for f in fnames:
       path = os.path.join(dirpath, f)
       if (path.endswith(".template")):
-        new_file_content = Template(open(path).read()).substitute(config.to_dict())
+        new_file_content = Template(open(path).read()).substitute(playground_config.to_dict())
         path_without_template_extension = os.path.splitext(path)[0]
         f = open(path_without_template_extension, 'w')
         f.write(new_file_content)
@@ -94,9 +121,12 @@ def test_overlay(args):
 add_simple_subparser(test_overlay)
 
 def overlay(args):
-  stage_overlay_files(args.playground_name)
+  playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+  stage_overlay_files(playground_config)
   upload_overlay_files(args.playground_name)
-add_simple_subparser(overlay)
+overlay_parser = subparsers.add_parser("overlay", help='{} overlay')
+overlay_parser.add_argument('playground_config_file', help='json config for playgrounds')
+overlay_parser.set_defaults(func=overlay)
 
 def create(args):
   ssh_exec("mkdir -p {}".format(pdir(args.playground_name)))
@@ -104,7 +134,9 @@ def create(args):
   prepare_ipython(args.playground_name)
   overlay(args)
   write_crontab(args)
-add_simple_subparser(create)
+create_parser = subparsers.add_parser("create", help='{} overlay')
+create_parser.add_argument('playground_config_file', help='json config for playgrounds')
+create_parser.set_defaults(func=create)
 
 def stop(args):
   ssh_exec("lsof +D playgrounds/" + args.playground_name + " | egrep '^tmux ' | awk '{print $2}' | xargs -r kill")
