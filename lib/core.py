@@ -7,7 +7,7 @@ class BaseSettingsClass(object):
   __isfrozen = False
   def __setattr__(self, key, value):
       if self.__isfrozen and not hasattr(self, key):
-          raise TypeError( "%r is a frozen class" % self )
+          raise TypeError( "{} is a frozen class, can't set attribute '{}'".format(self, key) )
       object.__setattr__(self, key, value)
 
   def _freeze(self):
@@ -45,7 +45,7 @@ def load_configs_from_file(config_class, global_defaults, label_attr, config_pat
   label_to_config = {}
   json_struct = json.loads(open(config_path).read())
   defaults = config_class()
-  defaults.load_dict(global_defaults)
+  defaults.load_dict(global_defaults.__dict__)
 
   if "default" in json_struct:
     defaults.load_dict(json_struct["default"])

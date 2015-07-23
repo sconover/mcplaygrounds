@@ -7,7 +7,7 @@ import json
 from string import Template
 
 from lib import const
-from lib.core import ssh_exec, ssh_exec_all, ssh_get, save_settings, scp_r, BaseSettingsClass, load_config
+from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, BaseSettingsClass, load_config
 
 OVERLAY_STAGING_DIR = "/tmp/playground-staging"
 
