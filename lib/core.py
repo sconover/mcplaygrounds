@@ -81,8 +81,11 @@ class ServerConfig(BaseSettingsClass):
     self.modern_gradle_apt_repo = "ppa:cwchien/gradle"
     self.modern_nginx_apt_repo = "ppa:nginx/stable"
     self.raspberry_juice_sponge_plugin_git_repo = "https://github.com/sconover/RaspberryJuiceSpongePlugin"
+    self.raspberry_juice_sponge_plugin_git_branch = "master"
     self.ipython_git_repo = "https://github.com/ipython/ipython"
+    self.ipython_git_branch = "3.x"
     self.mcpi_git_repo = "https://github.com/martinohanlon/mcpi"
+    self.mcpi_git_branch = "master"
     self.server_label = None
 
     # these MUST be specified in the separate server config file

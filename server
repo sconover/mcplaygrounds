@@ -66,22 +66,23 @@ def clean_all(args):
   clean_artifacts(args)
 add_simple_subparser(clean_all)
 
-# TODO: also, branch should be a settings
 def pull(args):
+  config = load_current_server_config()
+
   ssh_exec_all([
     "cd RaspberryJuiceSpongePlugin",
     "git pull --all",
-    "git checkout master",
+    "git checkout {}".format(config.raspberry_juice_sponge_plugin_git_branch),
     "git submodule update --init --recursive",
 
     "cd ../ipython",
     "git pull --all",
-    "git checkout 3.x",
+    "git checkout {}".format(config.ipython_git_branch),
     "git submodule update --init --recursive",
 
     "cd ../mcpi",
     "git pull --all",
-    "git checkout master"
+    "git checkout {}".format(config.mcpi_git_branch)
   ])
 add_simple_subparser(pull)
 
