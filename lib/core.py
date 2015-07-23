@@ -44,10 +44,10 @@ class BaseSettingsClass(object):
 def load_configs_from_file(config_class, global_defaults, label_attr, config_path):
   label_to_config = {}
   json_struct = json.loads(open(config_path).read())
-  defaults = global_defaults
+  defaults = config_class()
+  defaults.load_dict(global_defaults)
 
   if "default" in json_struct:
-    defaults = config_class()
     defaults.load_dict(json_struct["default"])
   json_struct.pop("default", None)
 
@@ -76,9 +76,19 @@ def load_config(label, config_class, global_defaults, label_attr, config_path):
 
 class ServerConfig(BaseSettingsClass):
   def __init__(self):
+
+    # here for the possibility of overriding in the server config file
+    self.modern_gradle_apt_repo = "ppa:cwchien/gradle"
+    self.modern_nginx_apt_repo = "ppa:nginx/stable"
+    self.raspberry_juice_sponge_plugin_git_repo = "https://github.com/sconover/RaspberryJuiceSpongePlugin"
+    self.ipython_git_repo = "https://github.com/ipython/ipython"
+    self.mcpi_git_repo = "https://github.com/martinohanlon/mcpi"
     self.server_label = None
+
+    # these MUST be specified in the separate server config file
     self.ssh_options = None
     self.user_at_host = None
+
     self._freeze() # no more attribute definitions are allowed
 
 DEFAULT_CONFIG = ServerConfig()

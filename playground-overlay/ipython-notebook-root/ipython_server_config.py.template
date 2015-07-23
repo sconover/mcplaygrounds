@@ -1,10 +1,7 @@
 c = get_config()
 
-# Notebook config
 c.NotebookApp.ip = '*'
 c.NotebookApp.open_browser = False
-#c.NotebookApp.password = u'sha1:bcd259ccf...[your hashed password here]'
-# It is a good idea to put it on a known, fixed port
 c.NotebookApp.port = ${ipython_notebook_server_http_port}
 c.NotebookApp.ipython_dir = './'
 c.NotebookApp.notebook_dir = './data'

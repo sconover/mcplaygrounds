@@ -9,10 +9,13 @@ refactor server config stuff
   serialize / deserialize to validate config...
 
 
-NotebookApp.default_url
-  ...should be listing of all notebooks...
-
 =============
+
+/foo
+  index...should show link to mc connection instructions, and link to python page
+    ...mc whitelist info too?
+    also, link to some coding help.
+
 
 Notebook management.
   copy nb from one playground to others, with playground origin prefix?
