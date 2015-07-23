@@ -102,6 +102,9 @@ def stage_overlay_files(playground_config):
 def upload_overlay_files(playground_name):
   scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
 
+def reload_nginx():
+  ssh_exec("sudo /etc/init.d/nginx reload")
+
 def add_simple_subparser(f):
   command_name = f.__name__.replace("_", "-")
   p = subparsers.add_parser(command_name, help='{} help'.format(command_name))
@@ -124,6 +127,7 @@ def overlay(args):
   playground_config = load_playground_config(args.playground_name, args.playground_config_file)
   stage_overlay_files(playground_config)
   upload_overlay_files(args.playground_name)
+  reload_nginx()
 overlay_parser = subparsers.add_parser("overlay", help='{} overlay')
 overlay_parser.add_argument('playground_config_file', help='json config for playgrounds')
 overlay_parser.set_defaults(func=overlay)

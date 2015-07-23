@@ -1,16 +1,37 @@
-./playground foo create ~/config.json
+refactor server config stuff
+  remove ec2 references
+  move ssh config to config file
+  ...just make ssh config a string?
+  specify git url + branch as website (in config)
+  specify http basic auth password
+
+  use...just point to a server conf file, and use contents of a key
+  serialize / deserialize to validate config...
+
+
+NotebookApp.default_url
+  ...should be listing of all notebooks...
 
 =============
+
+Notebook management.
+  copy nb from one playground to others, with playground origin prefix?
+
+
+=============
+
+document / howto
+
+nginx logs
+disk layout
 
 opening ports...
   ...show aws console docs. don't automate ec2 api stuff. this is server-focused.
+  open up 80
+  open up mc and ipython ports
 
-=============
-
-goal:
-  ipython running on a specified port (8888 for now)
-  make raspberry plugin port configurable
-  specify raspberry plugin port
+dns
+  dnsimple screenshots
 
 =============
 
