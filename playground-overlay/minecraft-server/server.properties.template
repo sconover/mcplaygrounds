@@ -8,6 +8,7 @@ force-gamemode=${minecraft_force_gamemode}
 spawn-monsters=${minecraft_spawn_monsters}
 player-idle-timeout=${minecraft_player_idle_timeout}
 announce-player-achievements=${minecraft_announce_player_achievements}
+white-list=${minecraft_whitelist}
 
 generator-settings=
 op-permission-level=4
@@ -24,7 +25,6 @@ server-ip=
 network-compression-threshold=256
 max-build-height=256
 spawn-npcs=true
-white-list=false
 spawn-animals=true
 hardcore=false
 snooper-enabled=true
