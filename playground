@@ -22,6 +22,7 @@ class PlaygroundConfig(BaseSettingsClass):
     self.minecraft_announce_player_achievements = None
     self.raspberry_juice_sponge_plugin_port = None
     self.ipython_notebook_server_http_port = None
+    self.web_password = None
     self._freeze() # no more attribute definitions are allowed
 
 DEFAULT_CONFIG = PlaygroundConfig()
@@ -72,6 +73,13 @@ def stage_overlay_files(playground_config):
 def upload_overlay_files(playground_name):
   scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
 
+def reset_basic_auth_password(playground_name, password):
+  ssh_exec("/usr/bin/htpasswd -b -c {}/htpasswd_file {} {}".format(
+    pdir(playground_name),
+    playground_name,
+    password
+  ))
+
 def reload_nginx():
   ssh_exec("sudo /etc/init.d/nginx reload")
 
@@ -97,6 +105,7 @@ def overlay(args):
   playground_config = load_playground_config(args.playground_name, args.playground_config_file)
   stage_overlay_files(playground_config)
   upload_overlay_files(args.playground_name)
+  reset_basic_auth_password(args.playground_name, playground_config.web_password)
   reload_nginx()
 overlay_parser = subparsers.add_parser("overlay", help='{} overlay')
 overlay_parser.add_argument('playground_config_file', help='json config for playgrounds')

@@ -2,11 +2,13 @@
   "foo": {
     "ipython_notebook_server_http_port": 25564,
     "minecraft_server_port": 25565,
-    "raspberry_juice_sponge_plugin_port": 25566
+    "raspberry_juice_sponge_plugin_port": 25566,
+    "web_password": "foofoo"
   },
   "bar": {
     "ipython_notebook_server_http_port": 25574,
     "minecraft_server_port": 25575,
-    "raspberry_juice_sponge_plugin_port": 25576
+    "raspberry_juice_sponge_plugin_port": 25576,
+    "web_password": "barbar"
   }
 }

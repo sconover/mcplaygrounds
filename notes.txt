@@ -1,14 +1,9 @@
 refactor server config stuff
-  remove ec2 references
-  move ssh config to config file
-  ...just make ssh config a string?
-  specify git url + branch as website (in config)
+  specify git url + branch as main static website (in config)
   specify http basic auth password
+  minecraft server whitelist
 
-  use...just point to a server conf file, and use contents of a key
-  serialize / deserialize to validate config...
-
-
+  ...then done w this stuff for a while. switch to turtle lib.
 =============
 
 /foo
@@ -39,6 +34,7 @@ dns
 =============
 
 backing data up
+  restoring data
 
 world to s3
 notebooks to git
