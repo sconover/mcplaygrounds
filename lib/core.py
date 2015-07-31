@@ -84,7 +84,7 @@ class ServerConfig(BaseSettingsClass):
     self.raspberry_juice_sponge_plugin_git_branch = "master"
     self.ipython_git_repo = "https://github.com/ipython/ipython"
     self.ipython_git_branch = "3.x"
-    self.mcpi_git_repo = "https://github.com/martinohanlon/mcpi"
+    self.mcpi_git_repo = "https://github.com/sconover/mcpi"
     self.mcpi_git_branch = "master"
     self.server_label = None
 

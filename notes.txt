@@ -1,3 +1,129 @@
+try rebuild from scratch
+
+turtle...
+  try notebook import
+  use degrees (sphere)
+
+mcpi - bring in other sorts of blocks
+then...entity creation?
+  really need and entity that points in a direction
+  pick an animal?
+  will they stay in mid-air? (collisions too...)
+
+teaching...
+  remember that this can be a very XCode playground-type experience.
+    explanation with runnable snippets
+    images too?
+      ...only simple ones. they need to see what happens on screen with stuff THEY make.
+============
+
+private repo for playground and server config
+
+============
+
+need to work on mcpi errors. these need to be way more obvious.
+
+============
+
+ipython environment principles:
+  boilerplate falls away
+  as close to papert/mindstorms ch3 feel as possible
+    still python though
+  procedural python. not oo.
+  discoverability via <TAB>
+
+============
+
+coord chart
+  n/s/e/w/up/down, with +- effects on x,y,z
+don't forget legos
+
+============
+
+in computing there are no big problems
+  there are only problems that have lots of small parts
+  you have to look at a big problem and divide it up. find the small parts.
+  you can solve big problems by training yourself to focus on the small, key parts.
+  moving a mountain one stone at a time
+
+in this class there are no dumb questions
+
+============
+
+ipython - make an easy shortcut to run and keep cursor in current cell...
+...e.g. shift+enter
+http://stackoverflow.com/questions/24210857/how-to-make-ipython-do-not-leave-edit-mode-after-press-ctrl-enter
+
+...this definitely belongs on an instruction card
+...along with screenshots of ipython and code...
+
+ipython kernel restart is great
+
+============
+
+some sort of automation / templating for setting up a local / osx environment
+...completely separate from the server setup
+
+============
+
+editor lessons
+
+undo, redo
+run
+  just like the robot exercise
+tab completion
+  means you can be lazy
+
+============
+
+# TODO: need to check ipython effects locally...
+# if classes show up in autocomplete, then split classes into a separate file.
+# ...I wonder if the import will expose them though...
+# TODO: generate docs for stuff useful in turtle using sphinx
+#   things that are visible externally...
+#   ...or that document game metadata
+# TODO: make a separate "game"/"game_info" module?
+#   ...future...make this a project?
+#   ...codegen to various languages
+#   ...this is a good basis for sphinx documentation
+#   ...put sphinx output on website
+# TODO: do something similar for entities
+#   enumerate entity tasks...
+# entity.startTask(uuid (or array...?), tasks.OCELOT_SIT)
+# entity.startTask(uuid, tasks.OCELOT_FOLLOW_OWNER)
+# entity.stopTask(uuid, tasks.OCELOT_FOLLOW_OWNER)
+# ...will need lots of error checking / help...
+# also use type to determine whether task was mis-applied
+# entity.create(x, y, z, entity.OCELOT) : uuid
+# entity.getNearest(x, y, z, entity.OCELOT, 7) : uuid[]
+
+# pendown(entity.OCELOT)
+# penup()
+# turtle/functional method...
+# start(tasks.OCELOT_FOLLOW_OWNER, select(entity.OCELOT, trail())
+# ...or just match only things created that task would apply to (default select)
+# ...and trail() is implicit too
+# start(tasks.OCELOT_FOLLOW_OWNER)
+# start(tasks.OCELOT_FOLLOW_OWNER, select=entity.OCELOT)
+# start(tasks.OCELOT_FOLLOW_OWNER, select=first(entity.OCELOT))
+# start(tasks.OCELOT_FOLLOW_OWNER, select=last(entity.OCELOT))
+# stop(tasks.OCELOT_FOLLOW_OWNER)
+# start(tasks.OCELOT_MATE)
+# start(tasks.OCELOT_ATTACK)
+# select_distance(entity.OCELOT, 100, uuid=reference)
+# select_distance(entity.OCELOT, 100, x= y= z=)
+
+# (automatic)
+from turtle import forward, backward, right, left, up, down, begin, pen_up, pen_down, chat
+# then...world inspection methods.
+# test(is(block.AIR), forward, forward, right, forward)
+# test(is(block.AIR)) ... implicit forward
+# test(is_not(block.AIR)) ...implicit forward ...future, can take a lambda
+# test(is(block.AIR))
+# test(forward, forward, right, forward)
+
+============
+
 refactor server config stuff
   specify git url + branch as main static website (in config)
   specify http basic auth password
@@ -39,6 +165,8 @@ backing data up
 world to s3
 notebooks to git
   also, transform notebooks to python files?
+
+minecraft max heap
 
 =============
 
