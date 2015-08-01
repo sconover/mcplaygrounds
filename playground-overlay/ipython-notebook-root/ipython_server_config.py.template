@@ -5,6 +5,7 @@ c.NotebookApp.open_browser = False
 c.NotebookApp.port = ${ipython_notebook_server_http_port}
 c.NotebookApp.ipython_dir = './'
 c.NotebookApp.notebook_dir = './data'
+c.NotebookApp.log_level = 'INFO'
 
 # proxy-related settings
 c.NotebookApp.base_url = '/${playground_name}/python/'

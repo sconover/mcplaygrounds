@@ -86,6 +86,10 @@ class ServerConfig(BaseSettingsClass):
     self.ipython_git_branch = "3.x"
     self.mcpi_git_repo = "https://github.com/sconover/mcpi"
     self.mcpi_git_branch = "master"
+    self.mcgamedata_git_repo = "https://github.com/sconover/mcgamedata"
+    self.mcgamedata_git_branch = "master"
+    self.oogway_git_repo = "https://github.com/sconover/oogway"
+    self.oogway_git_branch = "master"
     self.server_label = None
 
     # these MUST be specified in the separate server config file

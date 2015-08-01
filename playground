@@ -25,6 +25,7 @@ class PlaygroundConfig(BaseSettingsClass):
     self.raspberry_juice_sponge_plugin_port = None
     self.ipython_notebook_server_http_port = None
     self.web_password = None
+    self.initial_minecraft_player_name_for_oogway = None
     self._freeze() # no more attribute definitions are allowed
 
 DEFAULT_CONFIG = PlaygroundConfig()
@@ -46,14 +47,6 @@ def pdir(playground_name):
 def copy_minecraft_server_files(playground_name):
   ssh_exec("file {}/minecraft-server || (mkdir {}/minecraft-server && cp -R {}/. {}/minecraft-server/)".format(
     pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
-
-def prepare_ipython(playground_name):
-  ssh_exec_all([
-    "mkdir -p {}/ipython-notebook-root/data".format(pdir(playground_name)),
-    "mkdir -p {}/ipython-notebook-root/lib".format(pdir(playground_name)),
-    "rm -rf {}/ipython-notebook-root/lib/mcpi".format(pdir(playground_name)),
-    "cp -r mcpi/mcpi {}/ipython-notebook-root/lib/".format(pdir(playground_name)),
-  ])
 
 def load_playground_config(playground_name, config_path):
   return load_config(playground_name, PlaygroundConfig, DEFAULT_CONFIG, 'playground_name', config_path)
@@ -115,24 +108,71 @@ overlay_parser = subparsers.add_parser("overlay", help='{} overlay')
 overlay_parser.add_argument('playground_config_file', help='json config for playgrounds')
 overlay_parser.set_defaults(func=overlay)
 
+def refresh_ipython(args):
+  ssh_exec_all([
+    "mkdir -p {}/ipython-notebook-root/data".format(pdir(args.playground_name)),
+    "rm -rf {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
+    "mkdir -p {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
+    "cp -r mcpi/mcpi {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
+    "cp -r mcgamedata/mcgamedata {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
+    "cp -r oogway/oogway {}/ipython-notebook-root/lib/".format(pdir(args.playground_name))
+  ])
+add_simple_subparser(refresh_ipython)
+
 def create(args):
   ssh_exec("mkdir -p {}".format(pdir(args.playground_name)))
   copy_minecraft_server_files(args.playground_name)
-  prepare_ipython(args.playground_name)
+  refresh_ipython(args)
   overlay(args)
   write_crontab(args)
 create_parser = subparsers.add_parser("create", help='{} overlay')
 create_parser.add_argument('playground_config_file', help='json config for playgrounds')
 create_parser.set_defaults(func=create)
 
+def tmux_kill(session_name):
+  if does_tmux_session_exist(session_name):
+    ssh_exec("tmux kill-session -t " + session_name)
+  else:
+    print "tmux session '{}' not found, doing nothing.".format(session_name)
+
+def tmux_start(session_name):
+  if does_tmux_session_exist(session_name):
+    print "tmux session '{}' found, doing nothing.".format(session_name)
+  else:
+    start_command = ssh_get("crontab -l | grep 'new-session -s " + session_name + "' | sed 's/^\@reboot //'").strip()
+    ssh_exec(start_command)
+
+def does_tmux_session_exist(session_name):
+  output = ssh_get("tmux ls | egrep '^" + session_name + ": ' || true").strip()
+  if session_name in output:
+    return True
+  else:
+    return False
+
+def stop_ipython(args):
+  tmux_kill(args.playground_name + "-py")
+add_simple_subparser(stop_ipython)
+
+def stop_minecraft(args):
+  tmux_kill(args.playground_name + "-mc")
+add_simple_subparser(stop_minecraft)
+
+def start_ipython(args):
+  tmux_start(args.playground_name + "-py")
+add_simple_subparser(start_ipython)
+
+def start_minecraft(args):
+  tmux_start(args.playground_name + "-mc")
+add_simple_subparser(start_minecraft)
+
 def stop(args):
-  ssh_exec("lsof +D playgrounds/" + args.playground_name + " | egrep '^tmux ' | awk '{print $2}' | xargs -r kill")
+  stop_ipython(args)
+  stop_minecraft(args)
 add_simple_subparser(stop)
 
 def start(args):
-  start_commands = ssh_get("crontab -l | grep '@reboot cd " + pdir(args.playground_name) + "' | sed 's/^\@reboot //'").split("\n")
-  for start_command in start_commands:
-    ssh_exec(start_command)
+  start_minecraft(args)
+  start_ipython(args)
 add_simple_subparser(start)
 
 def update(args):

@@ -82,19 +82,27 @@ def pull(args):
   config = load_current_server_config()
 
   ssh_exec_all([
-    "cd RaspberryJuiceSpongePlugin",
+    "cd $HOME/RaspberryJuiceSpongePlugin",
     "git pull --all",
     "git checkout {}".format(config.raspberry_juice_sponge_plugin_git_branch),
     "git submodule update --init --recursive",
 
-    "cd ../ipython",
+    "cd $HOME/ipython",
     "git pull --all",
     "git checkout {}".format(config.ipython_git_branch),
     "git submodule update --init --recursive",
 
-    "cd ../mcpi",
+    "cd $HOME/mcpi",
     "git pull --all",
-    "git checkout {}".format(config.mcpi_git_branch)
+    "git checkout {}".format(config.mcpi_git_branch),
+
+    "cd $HOME/mcpi",
+    "git pull --all",
+    "git checkout {}".format(config.mcgamedata_git_branch),
+
+    "cd $HOME/oogway",
+    "git pull --all",
+    "git checkout {}".format(config.oogway_git_branch)
   ])
 add_simple_subparser(pull)
 
