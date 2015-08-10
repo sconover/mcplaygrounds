@@ -1,3 +1,9 @@
+should i have the turtle operate in infinite space, and only paint in the mc world?
+  or "flip over"? (start from the bottom of the earth...)
+  set a bounding box?
+
+============
+
 try rebuild from scratch
 
 turtle...
@@ -17,7 +23,7 @@ teaching...
       ...only simple ones. they need to see what happens on screen with stuff THEY make.
 ============
 
-private repo for playground and server config
+mc turtle should work in disconnected state...fall back to using absolute coords
 
 ============
 

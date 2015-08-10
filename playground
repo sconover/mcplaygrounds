@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 import argparse
 import os.path
 import shutil
@@ -8,6 +9,12 @@ from string import Template
 
 from lib import const
 from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, BaseSettingsClass, load_config
+
+this_dir = os.path.dirname(os.path.realpath(__file__))
+oogway_relative_dir = os.path.join(this_dir, "../oogway")
+sys.path.append(oogway_relative_dir)
+
+import oogway
 
 OVERLAY_STAGING_DIR = "/tmp/playground-staging"
 
@@ -67,7 +74,24 @@ def stage_overlay_files(playground_config):
         f.close()
         os.remove(path)
 
-def upload_overlay_files(playground_name):
+def convert_markdown_to_ipython_notebook(markdown_file):
+  this_dir = os.path.dirname(os.path.realpath(__file__))
+  template_relative_path = os.path.join(this_dir, "./template/ipython.markdown.template")
+  markdown_string_array = map(lambda line: '"' + line + '\\n"', open(markdown_file).read().split("\n"))
+  markdown_string_array = ",\n".join(markdown_string_array)
+  ipython_markdown = Template(open(template_relative_path).read()).substitute({"markdown_string_array": markdown_string_array})
+  data_dir = os.path.join(OVERLAY_STAGING_DIR, "ipython-notebook-root/data")
+  os.makedirs(data_dir)
+  ipython_markdown_file = os.path.join(data_dir, os.path.basename(markdown_file).replace(".md", "") + ".ipynb")
+  f = open(ipython_markdown_file, 'w')
+  f.write(ipython_markdown)
+  f.close()
+
+def stage_generated_files(playground_config):
+  oogway_docs_dir = os.path.join(os.path.dirname(oogway.__file__), "../docs")
+  convert_markdown_to_ipython_notebook(os.path.join(oogway_docs_dir, "blocks.md"))
+
+def upload_staged_files(playground_name):
   scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
 
 def reset_basic_auth_password(playground_name, password):
@@ -95,13 +119,18 @@ def status(args):
 add_simple_subparser(status)
 
 def test_overlay(args):
-  stage_overlay_files(args.playground_name)
-add_simple_subparser(test_overlay)
+  playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+  stage_overlay_files(playground_config)
+  stage_generated_files(playground_config)
+test_overlay_parser = subparsers.add_parser("test-overlay", help='{} overlay')
+test_overlay_parser.add_argument('playground_config_file', help='json config for playgrounds')
+test_overlay_parser.set_defaults(func=test_overlay)
 
 def overlay(args):
   playground_config = load_playground_config(args.playground_name, args.playground_config_file)
   stage_overlay_files(playground_config)
-  upload_overlay_files(args.playground_name)
+  stage_generated_files(playground_config)
+  upload_staged_files(args.playground_name)
   reset_basic_auth_password(args.playground_name, playground_config.web_password)
   reload_nginx()
 overlay_parser = subparsers.add_parser("overlay", help='{} overlay')
