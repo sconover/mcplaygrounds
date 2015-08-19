@@ -91,6 +91,11 @@ def stage_generated_files(playground_config):
   oogway_docs_dir = os.path.join(os.path.dirname(oogway.__file__), "../docs")
   convert_markdown_to_ipython_notebook(os.path.join(oogway_docs_dir, "blocks.md"))
 
+def create_and_link_shared_dir(playground_config):
+  ssh_exec("file ipython-share || mkdir ipython-share")
+  ssh_exec("touch ipython-share/__init__.py")
+  ssh_exec("ln -nsf /home/ubuntu/ipython-share {}/ipython-notebook-root/data/share".format(pdir(playground_config.playground_name)))
+
 def upload_staged_files(playground_name):
   scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
 
@@ -122,6 +127,7 @@ def test_overlay(args):
   playground_config = load_playground_config(args.playground_name, args.playground_config_file)
   stage_overlay_files(playground_config)
   stage_generated_files(playground_config)
+  create_and_link_shared_dir(playground_config)
 test_overlay_parser = subparsers.add_parser("test-overlay", help='{} overlay')
 test_overlay_parser.add_argument('playground_config_file', help='json config for playgrounds')
 test_overlay_parser.set_defaults(func=test_overlay)
@@ -130,6 +136,7 @@ def overlay(args):
   playground_config = load_playground_config(args.playground_name, args.playground_config_file)
   stage_overlay_files(playground_config)
   stage_generated_files(playground_config)
+  create_and_link_shared_dir(playground_config)
   upload_staged_files(args.playground_name)
   reset_basic_auth_password(args.playground_name, playground_config.web_password)
   reload_nginx()
@@ -181,6 +188,28 @@ def does_tmux_session_exist(session_name):
 def stop_ipython(args):
   tmux_kill(args.playground_name + "-py")
 add_simple_subparser(stop_ipython)
+
+def stop_minecraft(args):
+  tmux_kill(args.playground_name + "-mc")
+add_simple_subparser(stop_minecraft)
+
+def start_ipython(args):
+  tmux_start(args.playground_name + "-py")
+add_simple_subparser(start_ipython)
+
+def start_minecraft(args):
+  tmux_start(args.playground_name + "-mc")
+add_simple_subparser(start_minecraft)
+
+def restart_ipython(args):
+  stop_ipython(args)
+  start_ipython(args)
+add_simple_subparser(restart_ipython)
+
+def restart_minecraft(args):
+  stop_minecraft(args)
+  start_minecraft(args)
+add_simple_subparser(restart_minecraft)
 
 def stop_minecraft(args):
   tmux_kill(args.playground_name + "-mc")
@@ -247,7 +276,7 @@ def write_crontab(args):
     crontab_lines.append(
       at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -jar sponge-minecraft-server.jar run"))
     crontab_lines.append(
-      at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py  --ipython-dir=."))
+      at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --script --config=ipython_server_config.py  --ipython-dir=."))
   f = open("/tmp/crontab", 'w')
   f.write("\n".join(crontab_lines) + "\n")
   f.close()
