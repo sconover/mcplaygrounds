@@ -19,21 +19,21 @@ import oogway
 OVERLAY_STAGING_DIR = "/tmp/playground-staging"
 
 class PlaygroundConfig(BaseSettingsClass):
-  def __init__(self):
-    self.playground_name = None
-    self.minecraft_server_port = None
-    self.minecraft_gamemode = None
-    self.minecraft_force_gamemode = None
-    self.minecraft_spawn_monsters = None
-    self.minecraft_player_idle_timeout = None
-    self.minecraft_announce_player_achievements = None
-    self.minecraft_whitelist = None
-    self.minecraft_whitelist_json = None
-    self.raspberry_juice_sponge_plugin_port = None
-    self.ipython_notebook_server_http_port = None
-    self.web_password = None
-    self.initial_minecraft_player_name_for_oogway = None
-    self._freeze() # no more attribute definitions are allowed
+    def __init__(self):
+        self.playground_name = None
+        self.minecraft_server_port = None
+        self.minecraft_gamemode = None
+        self.minecraft_force_gamemode = None
+        self.minecraft_spawn_monsters = None
+        self.minecraft_player_idle_timeout = None
+        self.minecraft_announce_player_achievements = None
+        self.minecraft_whitelist = None
+        self.minecraft_whitelist_json = None
+        self.raspberry_juice_sponge_plugin_port = None
+        self.ipython_notebook_server_http_port = None
+        self.web_password = None
+        self.initial_minecraft_player_name_for_oogway = None
+        self._freeze() # no more attribute definitions are allowed
 
 DEFAULT_CONFIG = PlaygroundConfig()
 DEFAULT_CONFIG.minecraft_gamemode = 1 # creative
@@ -49,239 +49,239 @@ parser.add_argument('playground_name', type=str, help='help TODO')
 subparsers = parser.add_subparsers(help='sub-command help')
 
 def pdir(playground_name):
-  return "playgrounds/{}".format(playground_name)
+    return "playgrounds/{}".format(playground_name)
 
 def copy_minecraft_server_files(playground_name):
-  ssh_exec("file {}/minecraft-server || (mkdir {}/minecraft-server && cp -R {}/. {}/minecraft-server/)".format(
-    pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
+    ssh_exec("file {}/minecraft-server || (mkdir {}/minecraft-server && cp -R {}/. {}/minecraft-server/)".format(
+        pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
 
 def load_playground_config(playground_name, config_path):
-  return load_config(playground_name, PlaygroundConfig, DEFAULT_CONFIG, 'playground_name', config_path)
+    return load_config(playground_name, PlaygroundConfig, DEFAULT_CONFIG, 'playground_name', config_path)
 
 def stage_overlay_files(playground_config):
-  shutil.rmtree(OVERLAY_STAGING_DIR, ignore_errors=True)
-  shutil.copytree("playground-overlay", OVERLAY_STAGING_DIR)
-  playground_config.write_to_file("{}/playground.json".format(OVERLAY_STAGING_DIR))
+    shutil.rmtree(OVERLAY_STAGING_DIR, ignore_errors=True)
+    shutil.copytree("playground-overlay", OVERLAY_STAGING_DIR)
+    playground_config.write_to_file("{}/playground.json".format(OVERLAY_STAGING_DIR))
 
-  for dirpath, dnames, fnames in os.walk(OVERLAY_STAGING_DIR):
-    for f in fnames:
-      path = os.path.join(dirpath, f)
-      if (path.endswith(".template")):
-        new_file_content = Template(open(path).read()).substitute(playground_config.to_dict())
-        path_without_template_extension = os.path.splitext(path)[0]
-        f = open(path_without_template_extension, 'w')
-        f.write(new_file_content)
-        f.close()
-        os.remove(path)
+    for dirpath, dnames, fnames in os.walk(OVERLAY_STAGING_DIR):
+        for f in fnames:
+            path = os.path.join(dirpath, f)
+            if (path.endswith(".template")):
+                new_file_content = Template(open(path).read()).substitute(playground_config.to_dict())
+                path_without_template_extension = os.path.splitext(path)[0]
+                f = open(path_without_template_extension, 'w')
+                f.write(new_file_content)
+                f.close()
+                os.remove(path)
 
 def convert_markdown_to_ipython_notebook(markdown_file):
-  this_dir = os.path.dirname(os.path.realpath(__file__))
-  template_relative_path = os.path.join(this_dir, "./template/ipython.markdown.template")
-  markdown_string_array = map(lambda line: '"' + line + '\\n"', open(markdown_file).read().split("\n"))
-  markdown_string_array = ",\n".join(markdown_string_array)
-  ipython_markdown = Template(open(template_relative_path).read()).substitute({"markdown_string_array": markdown_string_array})
-  data_dir = os.path.join(OVERLAY_STAGING_DIR, "ipython-notebook-root/data")
-  os.makedirs(data_dir)
-  ipython_markdown_file = os.path.join(data_dir, os.path.basename(markdown_file).replace(".md", "") + ".ipynb")
-  f = open(ipython_markdown_file, 'w')
-  f.write(ipython_markdown)
-  f.close()
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    template_relative_path = os.path.join(this_dir, "./template/ipython.markdown.template")
+    markdown_string_array = map(lambda line: '"' + line + '\\n"', open(markdown_file).read().split("\n"))
+    markdown_string_array = ",\n".join(markdown_string_array)
+    ipython_markdown = Template(open(template_relative_path).read()).substitute({"markdown_string_array": markdown_string_array})
+    data_dir = os.path.join(OVERLAY_STAGING_DIR, "ipython-notebook-root/data")
+    os.makedirs(data_dir)
+    ipython_markdown_file = os.path.join(data_dir, os.path.basename(markdown_file).replace(".md", "") + ".ipynb")
+    f = open(ipython_markdown_file, 'w')
+    f.write(ipython_markdown)
+    f.close()
 
 def stage_generated_files(playground_config):
-  oogway_docs_dir = os.path.join(os.path.dirname(oogway.__file__), "../docs")
-  convert_markdown_to_ipython_notebook(os.path.join(oogway_docs_dir, "blocks.md"))
+    oogway_docs_dir = os.path.join(os.path.dirname(oogway.__file__), "../docs")
+    convert_markdown_to_ipython_notebook(os.path.join(oogway_docs_dir, "blocks.md"))
 
 def create_and_link_shared_dir(playground_config):
-  ssh_exec("file ipython-share || mkdir ipython-share")
-  ssh_exec("touch ipython-share/__init__.py")
-  ssh_exec("ln -nsf /home/ubuntu/ipython-share {}/ipython-notebook-root/data/share".format(pdir(playground_config.playground_name)))
+    ssh_exec("file ipython-share || mkdir ipython-share")
+    ssh_exec("touch ipython-share/__init__.py")
+    ssh_exec("ln -nsf /home/ubuntu/ipython-share {}/ipython-notebook-root/data/share".format(pdir(playground_config.playground_name)))
 
 def upload_staged_files(playground_name):
-  scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
+    scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
 
 def reset_basic_auth_password(playground_name, password):
-  ssh_exec("/usr/bin/htpasswd -b -c {}/htpasswd_file {} {}".format(
-    pdir(playground_name),
-    playground_name,
-    password
-  ))
+    ssh_exec("/usr/bin/htpasswd -b -c {}/htpasswd_file {} {}".format(
+        pdir(playground_name),
+        playground_name,
+        password
+    ))
 
 def reload_nginx():
-  ssh_exec("sudo /etc/init.d/nginx reload")
+    ssh_exec("sudo /etc/init.d/nginx reload")
 
 def add_simple_subparser(f):
-  command_name = f.__name__.replace("_", "-")
-  p = subparsers.add_parser(command_name, help='{} help'.format(command_name))
-  p.set_defaults(func=f)
+    command_name = f.__name__.replace("_", "-")
+    p = subparsers.add_parser(command_name, help='{} help'.format(command_name))
+    p.set_defaults(func=f)
 
 def exists(args):
-  ssh_exec("file {}".format(pdir(args.playground_name)))
+    ssh_exec("file {}".format(pdir(args.playground_name)))
 add_simple_subparser(exists)
 
 def status(args):
-  # TODO: should be better
-  ssh_exec("file {} || true".format(pdir(args.playground_name)))
+    # TODO: should be better
+    ssh_exec("file {} || true".format(pdir(args.playground_name)))
 add_simple_subparser(status)
 
 def test_overlay(args):
-  playground_config = load_playground_config(args.playground_name, args.playground_config_file)
-  stage_overlay_files(playground_config)
-  stage_generated_files(playground_config)
-  create_and_link_shared_dir(playground_config)
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    stage_overlay_files(playground_config)
+    stage_generated_files(playground_config)
+    create_and_link_shared_dir(playground_config)
 test_overlay_parser = subparsers.add_parser("test-overlay", help='{} overlay')
 test_overlay_parser.add_argument('playground_config_file', help='json config for playgrounds')
 test_overlay_parser.set_defaults(func=test_overlay)
 
 def overlay(args):
-  playground_config = load_playground_config(args.playground_name, args.playground_config_file)
-  stage_overlay_files(playground_config)
-  stage_generated_files(playground_config)
-  create_and_link_shared_dir(playground_config)
-  upload_staged_files(args.playground_name)
-  reset_basic_auth_password(args.playground_name, playground_config.web_password)
-  reload_nginx()
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    stage_overlay_files(playground_config)
+    stage_generated_files(playground_config)
+    create_and_link_shared_dir(playground_config)
+    upload_staged_files(args.playground_name)
+    reset_basic_auth_password(args.playground_name, playground_config.web_password)
+    reload_nginx()
 overlay_parser = subparsers.add_parser("overlay", help='{} overlay')
 overlay_parser.add_argument('playground_config_file', help='json config for playgrounds')
 overlay_parser.set_defaults(func=overlay)
 
 def refresh_ipython(args):
-  ssh_exec_all([
-    "mkdir -p {}/ipython-notebook-root/data".format(pdir(args.playground_name)),
-    "rm -rf {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
-    "mkdir -p {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
-    "cp -r mcpi/mcpi {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
-    "cp -r mcgamedata/mcgamedata {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
-    "cp -r oogway/oogway {}/ipython-notebook-root/lib/".format(pdir(args.playground_name))
-  ])
+    ssh_exec_all([
+        "mkdir -p {}/ipython-notebook-root/data".format(pdir(args.playground_name)),
+        "rm -rf {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
+        "mkdir -p {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
+        "cp -r mcpi/mcpi {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
+        "cp -r mcgamedata/mcgamedata {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
+        "cp -r oogway/oogway {}/ipython-notebook-root/lib/".format(pdir(args.playground_name))
+    ])
 add_simple_subparser(refresh_ipython)
 
 def create(args):
-  ssh_exec("mkdir -p {}".format(pdir(args.playground_name)))
-  copy_minecraft_server_files(args.playground_name)
-  refresh_ipython(args)
-  overlay(args)
-  write_crontab(args)
+    ssh_exec("mkdir -p {}".format(pdir(args.playground_name)))
+    copy_minecraft_server_files(args.playground_name)
+    refresh_ipython(args)
+    overlay(args)
+    write_crontab(args)
 create_parser = subparsers.add_parser("create", help='{} overlay')
 create_parser.add_argument('playground_config_file', help='json config for playgrounds')
 create_parser.set_defaults(func=create)
 
 def tmux_kill(session_name):
-  if does_tmux_session_exist(session_name):
-    ssh_exec("tmux kill-session -t " + session_name)
-  else:
-    print "tmux session '{}' not found, doing nothing.".format(session_name)
+    if does_tmux_session_exist(session_name):
+        ssh_exec("tmux kill-session -t " + session_name)
+    else:
+        print "tmux session '{}' not found, doing nothing.".format(session_name)
 
 def tmux_start(session_name):
-  if does_tmux_session_exist(session_name):
-    print "tmux session '{}' found, doing nothing.".format(session_name)
-  else:
-    start_command = ssh_get("crontab -l | grep 'new-session -s " + session_name + "' | sed 's/^\@reboot //'").strip()
-    ssh_exec(start_command)
+    if does_tmux_session_exist(session_name):
+        print "tmux session '{}' found, doing nothing.".format(session_name)
+    else:
+        start_command = ssh_get("crontab -l | grep 'new-session -s " + session_name + "' | sed 's/^\@reboot //'").strip()
+        ssh_exec(start_command)
 
 def does_tmux_session_exist(session_name):
-  output = ssh_get("tmux ls | egrep '^" + session_name + ": ' || true").strip()
-  if session_name in output:
-    return True
-  else:
-    return False
+    output = ssh_get("tmux ls | egrep '^" + session_name + ": ' || true").strip()
+    if session_name in output:
+        return True
+    else:
+        return False
 
 def stop_ipython(args):
-  tmux_kill(args.playground_name + "-py")
+    tmux_kill(args.playground_name + "-py")
 add_simple_subparser(stop_ipython)
 
 def stop_minecraft(args):
-  tmux_kill(args.playground_name + "-mc")
+    tmux_kill(args.playground_name + "-mc")
 add_simple_subparser(stop_minecraft)
 
 def start_ipython(args):
-  tmux_start(args.playground_name + "-py")
+    tmux_start(args.playground_name + "-py")
 add_simple_subparser(start_ipython)
 
 def start_minecraft(args):
-  tmux_start(args.playground_name + "-mc")
+    tmux_start(args.playground_name + "-mc")
 add_simple_subparser(start_minecraft)
 
 def restart_ipython(args):
-  stop_ipython(args)
-  start_ipython(args)
+    stop_ipython(args)
+    start_ipython(args)
 add_simple_subparser(restart_ipython)
 
 def restart_minecraft(args):
-  stop_minecraft(args)
-  start_minecraft(args)
+    stop_minecraft(args)
+    start_minecraft(args)
 add_simple_subparser(restart_minecraft)
 
 def stop_minecraft(args):
-  tmux_kill(args.playground_name + "-mc")
+    tmux_kill(args.playground_name + "-mc")
 add_simple_subparser(stop_minecraft)
 
 def start_ipython(args):
-  tmux_start(args.playground_name + "-py")
+    tmux_start(args.playground_name + "-py")
 add_simple_subparser(start_ipython)
 
 def start_minecraft(args):
-  tmux_start(args.playground_name + "-mc")
+    tmux_start(args.playground_name + "-mc")
 add_simple_subparser(start_minecraft)
 
 def stop(args):
-  stop_ipython(args)
-  stop_minecraft(args)
+    stop_ipython(args)
+    stop_minecraft(args)
 add_simple_subparser(stop)
 
 def start(args):
-  start_minecraft(args)
-  start_ipython(args)
+    start_minecraft(args)
+    start_ipython(args)
 add_simple_subparser(start)
 
 def update(args):
-  stop(args)
-  create(args)
+    stop(args)
+    create(args)
 add_simple_subparser(update)
 
 def destroy(args):
-  exists(args)
-  stop(args)
-  ssh_exec("rm -rf {}".format(pdir(args.playground_name)))
+    exists(args)
+    stop(args)
+    ssh_exec("rm -rf {}".format(pdir(args.playground_name)))
 add_simple_subparser(destroy)
 
 
 def get_all_playground_config():
-  all_config = {}
-  json_lines = ssh_get("cat playgrounds/*/playground.json").split("\n")
-  for line in json_lines:
-    p = PlaygroundConfig()
-    p.load_json(line)
-    all_config[p.playground_name] = p
-  return all_config
+    all_config = {}
+    json_lines = ssh_get("cat playgrounds/*/playground.json").split("\n")
+    for line in json_lines:
+        p = PlaygroundConfig()
+        p.load_json(line)
+        all_config[p.playground_name] = p
+    return all_config
 
 def test_config_json(args):
-  get_all_playground_config()
+    get_all_playground_config()
 add_simple_subparser(test_config_json)
 
 def tmux_new_session_command(working_dir, session_name, command):
-  return "cd {} && /usr/bin/tmux new-session -s {} -d '{}'".format(working_dir, session_name, command)
+    return "cd {} && /usr/bin/tmux new-session -s {} -d '{}'".format(working_dir, session_name, command)
 
 # TODO: make this a top-level command
 
 def at_reboot_tmux_crontab_line(playground_name, subdir, tmux_session_suffix, command):
-  return "@reboot " + tmux_new_session_command(
-        pdir(playground_name) + "/" + subdir,
-        playground_name + "-" + tmux_session_suffix,
-        command)
+    return "@reboot " + tmux_new_session_command(
+                pdir(playground_name) + "/" + subdir,
+                playground_name + "-" + tmux_session_suffix,
+                command)
 
 def write_crontab(args):
-  crontab_lines = []
-  all_config = get_all_playground_config()
-  for playground_name in all_config:
-    crontab_lines.append(
-      at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -jar sponge-minecraft-server.jar run"))
-    crontab_lines.append(
-      at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --script --config=ipython_server_config.py  --ipython-dir=."))
-  f = open("/tmp/crontab", 'w')
-  f.write("\n".join(crontab_lines) + "\n")
-  f.close()
-  scp_r("/tmp/crontab", "new-crontab")
-  ssh_exec("cat new-crontab | crontab -")
+    crontab_lines = []
+    all_config = get_all_playground_config()
+    for playground_name in all_config:
+        crontab_lines.append(
+            at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -jar sponge-minecraft-server.jar run"))
+        crontab_lines.append(
+            at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --script --config=ipython_server_config.py    --ipython-dir=."))
+    f = open("/tmp/crontab", 'w')
+    f.write("\n".join(crontab_lines) + "\n")
+    f.close()
+    scp_r("/tmp/crontab", "new-crontab")
+    ssh_exec("cat new-crontab | crontab -")
 add_simple_subparser(write_crontab)
 
 args = parser.parse_args()
