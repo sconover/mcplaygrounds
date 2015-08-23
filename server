@@ -2,9 +2,11 @@
 
 import argparse
 import os.path
+import os
 
 from lib import const
-from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, set_current_server_config, load_current_server_config
+from lib.core import ssh_parts, scp_parts, ssh_exec, ssh_exec_all, ssh_get, scp_r, \
+    set_current_server_config, load_current_server_config
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(help='sub-command help')
@@ -171,6 +173,24 @@ add_simple_subparser(build)
 def reboot(args):
     ssh_exec("sudo reboot")
 add_simple_subparser(reboot)
+
+def ssh(args):
+    parts = ssh_parts()
+    ssh_bin = parts.pop(0)
+    parts.insert(0, "") # dunno why
+    os.execv(ssh_bin, parts)
+add_simple_subparser(ssh)
+
+def scp_r(args):
+    parts = scp_parts(args.local_path, args.remote_path)
+    scp_bin = parts.pop(0)
+    parts.insert(0, "") # dunno why
+    os.execv(scp_bin, parts)
+scp_parser = subparsers.add_parser("scp-r", help='{} scp-r')
+scp_parser.add_argument('local_path', help='copy from local file or dir')
+scp_parser.add_argument('remote_path', help='copy to remote file or dir')
+scp_parser.set_defaults(func=scp_r)
+
 
 args = parser.parse_args()
 args.func(args)

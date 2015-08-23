@@ -116,9 +116,13 @@ def load_current_server_config():
 def ssh_exec_all(commands):
     ssh_exec(" && ".join(commands))
 
-def ssh_command_parts(remote_command):
+def ssh_parts():
+    home = os.path.expanduser("~")
     server_config = load_current_server_config()
-    return ['ssh', server_config.ssh_options, server_config.user_at_host, remote_command]
+    return ['/usr/bin/ssh', server_config.ssh_options.replace("~", home), server_config.user_at_host]
+
+def ssh_command_parts(remote_command):
+    return ssh_parts().extend([remote_command])
 
 def ssh_exec(remote_command):
     parts = ssh_command_parts(remote_command)
@@ -131,13 +135,16 @@ def ssh_exec(remote_command):
 def ssh_get(remote_command):
     return subprocess.check_output(ssh_command_parts(remote_command)).strip()
 
-def scp_r(local_path, remote_path):
+def scp_parts(local_path, remote_path):
     server_config = load_current_server_config()
-    parts = [
-        'scp', server_config.ssh_options, '-r',
+    return [
+        '/usr/bin/scp', server_config.ssh_options, '-r',
         local_path,
         server_config.user_at_host + ":" + remote_path
     ]
+
+def scp_r(local_path, remote_path):
+    parts = scp_parts(local_path, remote_path)
     cmd = " ".join(parts)
     print "> {}".format(cmd)
     if subprocess.call(parts)!=0:

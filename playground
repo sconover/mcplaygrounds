@@ -87,6 +87,10 @@ def convert_markdown_to_ipython_notebook(markdown_file):
     f.write(ipython_markdown)
     f.close()
 
+    import IPython.nbformat.current as nbf
+    nb = nbf.read(open('test.py', 'r'), 'py')
+    nbf.write(nb, open('test.ipynb', 'w'), 'ipynb')
+
 def stage_generated_files(playground_config):
     oogway_docs_dir = os.path.join(os.path.dirname(oogway.__file__), "../docs")
     convert_markdown_to_ipython_notebook(os.path.join(oogway_docs_dir, "blocks.md"))
