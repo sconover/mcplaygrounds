@@ -1,3 +1,12 @@
+good errors
+
+for ex, when player connect and player not present, list players connected (or say 'No players are in the game')
+focus is on sentences that are direct and that kids will understand.
+
+log server trace and put it somewhere easy to access?
+
+=========
+
 ebs notes:
   create 2gb general ssd ebs volume
   device name = sdf

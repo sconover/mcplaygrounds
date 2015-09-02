@@ -98,7 +98,7 @@ def pull(args):
         "git pull --all",
         "git checkout {}".format(config.mcpi_git_branch),
 
-        "cd $HOME/mcpi",
+        "cd $HOME/mcgamedata",
         "git pull --all",
         "git checkout {}".format(config.mcgamedata_git_branch),
 
