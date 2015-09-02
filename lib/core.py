@@ -122,7 +122,9 @@ def ssh_parts():
     return ['/usr/bin/ssh', server_config.ssh_options.replace("~", home), server_config.user_at_host]
 
 def ssh_command_parts(remote_command):
-    return ssh_parts().extend([remote_command])
+    parts = ssh_parts()
+    parts.extend([remote_command])
+    return parts
 
 def ssh_exec(remote_command):
     parts = ssh_command_parts(remote_command)
@@ -145,6 +147,18 @@ def scp_parts(local_path, remote_path):
 
 def scp_r(local_path, remote_path):
     parts = scp_parts(local_path, remote_path)
+    cmd = " ".join(parts)
+    print "> {}".format(cmd)
+    if subprocess.call(parts)!=0:
+        raise Exception("FAILED: {}".format(cmd))
+
+def scp_r_remote_to_local(remote_path, local_path):
+    server_config = load_current_server_config()
+    parts = [
+        '/usr/bin/scp', server_config.ssh_options, '-r',
+        server_config.user_at_host + ":" + remote_path,
+        local_path
+    ]
     cmd = " ".join(parts)
     print "> {}".format(cmd)
     if subprocess.call(parts)!=0:

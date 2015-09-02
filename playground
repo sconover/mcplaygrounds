@@ -8,7 +8,7 @@ import json
 from string import Template
 
 from lib import const
-from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, BaseSettingsClass, load_config
+from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, scp_r_remote_to_local, BaseSettingsClass, load_config
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 oogway_relative_dir = os.path.join(this_dir, "../oogway")
@@ -87,10 +87,6 @@ def convert_markdown_to_ipython_notebook(markdown_file):
     f.write(ipython_markdown)
     f.close()
 
-    import IPython.nbformat.current as nbf
-    nb = nbf.read(open('test.py', 'r'), 'py')
-    nbf.write(nb, open('test.ipynb', 'w'), 'ipynb')
-
 def stage_generated_files(playground_config):
     oogway_docs_dir = os.path.join(os.path.dirname(oogway.__file__), "../docs")
     convert_markdown_to_ipython_notebook(os.path.join(oogway_docs_dir, "blocks.md"))
@@ -150,7 +146,7 @@ overlay_parser.set_defaults(func=overlay)
 
 def refresh_ipython(args):
     ssh_exec_all([
-        "mkdir -p {}/ipython-notebook-root/data".format(pdir(args.playground_name)),
+        "mkdir -p {}".format(ipython_data_dir(args.playground_name)),
         "rm -rf {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
         "mkdir -p {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
         "cp -r mcpi/mcpi {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
@@ -248,6 +244,62 @@ def destroy(args):
     ssh_exec("rm -rf {}".format(pdir(args.playground_name)))
 add_simple_subparser(destroy)
 
+def ipython_data_dir(playground_name):
+    return "{}/ipython-notebook-root/data".format(pdir(args.playground_name))
+
+def minecraft_world_dir(playground_name):
+    return "{}/minecraft-server/world".format(pdir(args.playground_name))
+
+def backup(args):
+    if not os.path.isdir(args.backup_dir):
+        os.makedirs(args.backup_dir)
+    playground_backup_dir = os.path.join(args.backup_dir, args.playground_name)
+
+    if os.path.isdir(playground_backup_dir):
+        raise Exception(playground_backup_dir  + " already exists, will not attempt to back up - " +
+            "this avoids risk of clobbering a previous backup.")
+
+    stop(args)
+
+    ipython_data_backup_dir = playground_backup_dir + "/ipython-notebook-root/data"
+    os.makedirs(ipython_data_backup_dir)
+    scp_r_remote_to_local(ipython_data_dir(args.playground_name) + "/*", ipython_data_backup_dir + "/")
+
+    minecraft_world_backup_dir = playground_backup_dir + "/minecraft-server/world"
+    os.makedirs(minecraft_world_backup_dir)
+    scp_r_remote_to_local(minecraft_world_dir(args.playground_name) + "/*", minecraft_world_backup_dir + "/")
+
+    start(args)
+backup_parser = subparsers.add_parser("backup", help='{} backup')
+backup_parser.add_argument('backup_dir', help='root dir for this backup')
+backup_parser.set_defaults(func=backup)
+
+def restore(args):
+    if not os.path.isdir(args.playground_backup_dir + "/ipython-notebook-root/data"):
+        raise Exception(args.playground_backup_dir  + " backup not found.")
+
+    stop(args)
+
+    ssh_exec("(file {} && mv {} {}.backup) || true".format(
+        ipython_data_dir(args.playground_name),
+        ipython_data_dir(args.playground_name),
+        ipython_data_dir(args.playground_name)))
+
+    ssh_exec("(file {} && mv {} {}.backup) || true".format(
+        minecraft_world_dir(args.playground_name),
+        minecraft_world_dir(args.playground_name),
+        minecraft_world_dir(args.playground_name)))
+
+    ipython_data_backup_dir = args.playground_backup_dir + "/ipython-notebook-root/data"
+    scp_r(ipython_data_backup_dir + "/", ipython_data_dir(args.playground_name) + "/")
+
+    minecraft_world_backup_dir = args.playground_backup_dir + "/minecraft-server/world"
+    scp_r(minecraft_world_backup_dir + "/", minecraft_world_dir(args.playground_name) + "/", )
+
+    start(args)
+restore_parser = subparsers.add_parser("restore", help='{} restore')
+restore_parser.add_argument('playground_backup_dir', help='local backup dir of playground')
+restore_parser.set_defaults(func=restore)
 
 def get_all_playground_config():
     all_config = {}

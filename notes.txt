@@ -1,3 +1,14 @@
+ebs notes:
+  create 2gb general ssd ebs volume
+  device name = sdf
+  attach to running instance
+  in the instance...
+    mkdir /home/ubuntu/data
+    sudo mkfs.ext4 /dev/xvdf
+    sudo mount /dev/xvdf /home/ubuntu/data
+    df -kh
+      (should see that data has 2G free)
+
   exercise idea:
     split up the class
     make an alphabet
