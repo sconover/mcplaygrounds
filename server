@@ -181,15 +181,15 @@ def ssh(args):
     os.execv(ssh_bin, parts)
 add_simple_subparser(ssh)
 
-def scp_r(args):
+def scp(args):
     parts = scp_parts(args.local_path, args.remote_path)
     scp_bin = parts.pop(0)
     parts.insert(0, "") # dunno why
     os.execv(scp_bin, parts)
-scp_parser = subparsers.add_parser("scp-r", help='{} scp-r')
+scp_parser = subparsers.add_parser("scp", help='{} scp')
 scp_parser.add_argument('local_path', help='copy from local file or dir')
 scp_parser.add_argument('remote_path', help='copy to remote file or dir')
-scp_parser.set_defaults(func=scp_r)
+scp_parser.set_defaults(func=scp)
 
 
 args = parser.parse_args()
