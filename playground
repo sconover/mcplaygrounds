@@ -5,6 +5,7 @@ import argparse
 import os.path
 import shutil
 import json
+import time
 from string import Template
 
 from lib import const
@@ -47,6 +48,9 @@ DEFAULT_CONFIG.minecraft_whitelist_json = "[]"
 parser = argparse.ArgumentParser()
 parser.add_argument('playground_name', type=str, help='help TODO')
 subparsers = parser.add_subparsers(help='sub-command help')
+
+def now_str():
+    return time.strftime('%Y%m%d%H%M%S', time.localtime())
 
 def pdir(playground_name):
     return "playgrounds/{}".format(playground_name)
@@ -250,31 +254,74 @@ def ipython_data_dir(playground_name):
 def minecraft_world_dir(playground_name):
     return "{}/minecraft-server/world".format(pdir(args.playground_name))
 
-def backup(args):
-    if not os.path.isdir(args.backup_dir):
-        os.makedirs(args.backup_dir)
-    playground_backup_dir = os.path.join(args.backup_dir, args.playground_name)
+#TODO: add: playground list
+#then, bash script to quickly backup all playgrounds, on the server, is possible
+  # or make "playgrounds" ?
+  # default is *. also accepts comma-delimited list
+  # does some chanking, but then just executes playground commands in a loop
 
-    if os.path.isdir(playground_backup_dir):
-        raise Exception(playground_backup_dir  + " already exists, will not attempt to back up - " +
-            "this avoids risk of clobbering a previous backup.")
+def on_server_backup(args):
+    ssh_exec("mkdir -p " + args.backup_dir)
+    playground_backup_dir = os.path.join(args.backup_dir, args.playground_name)
+    ssh_exec("test ! -d " + playground_backup_dir)
 
     stop(args)
 
     ipython_data_backup_dir = playground_backup_dir + "/ipython-notebook-root/data"
-    os.makedirs(ipython_data_backup_dir)
-    scp_r_remote_to_local(ipython_data_dir(args.playground_name) + "/*", ipython_data_backup_dir + "/")
+    ssh_exec_all([
+        "mkdir -p " + ipython_data_backup_dir,
+        "cp -r " + ipython_data_dir(args.playground_name) + "/* " + ipython_data_backup_dir + "/"
+    ])
 
     minecraft_world_backup_dir = playground_backup_dir + "/minecraft-server/world"
-    os.makedirs(minecraft_world_backup_dir)
-    scp_r_remote_to_local(minecraft_world_dir(args.playground_name) + "/*", minecraft_world_backup_dir + "/")
+    ssh_exec_all([
+        "mkdir -p " + minecraft_world_backup_dir,
+        "cp -r " + minecraft_world_dir(args.playground_name) + "/* " + minecraft_world_backup_dir + "/"
+    ])
 
     start(args)
-backup_parser = subparsers.add_parser("backup", help='{} backup')
-backup_parser.add_argument('backup_dir', help='root dir for this backup')
-backup_parser.set_defaults(func=backup)
+on_server_backup_parser = subparsers.add_parser("on-server-backup", help='{} on-server-backup')
+on_server_backup_parser.add_argument('backup_dir', help='root dir for this backup')
+on_server_backup_parser.set_defaults(func=on_server_backup)
 
-def restore(args):
+def on_server_restore(args):
+    ssh_exec("test -d " + args.playground_backup_dir + "/ipython-notebook-root/data")
+
+    stop(args)
+
+    timestamp_str = now_str()
+
+    ssh_exec("(file {} && mv {} {}.backup.{}) || true".format(
+        ipython_data_dir(args.playground_name),
+        ipython_data_dir(args.playground_name),
+        ipython_data_dir(args.playground_name),
+        timestamp_str))
+
+    ssh_exec("(file {} && mv {} {}.backup.{}) || true".format(
+        minecraft_world_dir(args.playground_name),
+        minecraft_world_dir(args.playground_name),
+        minecraft_world_dir(args.playground_name),
+        timestamp_str))
+
+    ipython_data_backup_dir = args.playground_backup_dir + "/ipython-notebook-root/data"
+    ssh_exec_all([
+        "mkdir " + ipython_data_dir(args.playground_name),
+        "cp -r " + ipython_data_backup_dir + "/* " + ipython_data_dir(args.playground_name) + "/"
+    ])
+
+    minecraft_world_backup_dir = args.playground_backup_dir + "/minecraft-server/world"
+    ssh_exec_all([
+        "mkdir " + minecraft_world_dir(args.playground_name),
+        "cp -r " + minecraft_world_backup_dir + "/* " + minecraft_world_dir(args.playground_name) + "/"
+    ])
+
+    start(args)
+on_server_restore_parser = subparsers.add_parser("on-server-restore", help='{} on-server-restore')
+on_server_restore_parser.add_argument('playground_backup_dir', help='server backup dir of playground')
+on_server_restore_parser.set_defaults(func=on_server_restore)
+
+
+def from_local_restore(args):
     if not os.path.isdir(args.playground_backup_dir + "/ipython-notebook-root/data"):
         raise Exception(args.playground_backup_dir  + " backup not found.")
 
@@ -297,9 +344,60 @@ def restore(args):
     scp_r(minecraft_world_backup_dir + "/", minecraft_world_dir(args.playground_name) + "/", )
 
     start(args)
-restore_parser = subparsers.add_parser("restore", help='{} restore')
-restore_parser.add_argument('playground_backup_dir', help='local backup dir of playground')
-restore_parser.set_defaults(func=restore)
+from_local_restore_parser = subparsers.add_parser("from-local-restore", help='{} from-local-restore')
+from_local_restore_parser.add_argument('playground_backup_dir', help='local backup dir of playground')
+from_local_restore_parser.set_defaults(func=from_local_restore)
+
+def to_local_backup(args):
+    if not os.path.isdir(args.backup_dir):
+        os.makedirs(args.backup_dir)
+    playground_backup_dir = os.path.join(args.backup_dir, args.playground_name)
+
+    if os.path.isdir(playground_backup_dir):
+        raise Exception(playground_backup_dir  + " already exists, will not attempt to back up - " +
+            "this avoids risk of clobbering a previous backup.")
+
+    stop(args)
+
+    ipython_data_backup_dir = playground_backup_dir + "/ipython-notebook-root/data"
+    os.makedirs(ipython_data_backup_dir)
+    scp_r_remote_to_local(ipython_data_dir(args.playground_name) + "/*", ipython_data_backup_dir + "/")
+
+    minecraft_world_backup_dir = playground_backup_dir + "/minecraft-server/world"
+    os.makedirs(minecraft_world_backup_dir)
+    scp_r_remote_to_local(minecraft_world_dir(args.playground_name) + "/*", minecraft_world_backup_dir + "/")
+
+    start(args)
+to_local_backup_parser = subparsers.add_parser("to-local-backup", help='{} to-local-backup')
+to_local_backup_parser.add_argument('backup_dir', help='root dir for this backup')
+to_local_backup_parser.set_defaults(func=to_local_backup)
+
+def from_local_restore(args):
+    if not os.path.isdir(args.playground_backup_dir + "/ipython-notebook-root/data"):
+        raise Exception(args.playground_backup_dir  + " backup not found.")
+
+    stop(args)
+
+    ssh_exec("(file {} && mv {} {}.backup) || true".format(
+        ipython_data_dir(args.playground_name),
+        ipython_data_dir(args.playground_name),
+        ipython_data_dir(args.playground_name)))
+
+    ssh_exec("(file {} && mv {} {}.backup) || true".format(
+        minecraft_world_dir(args.playground_name),
+        minecraft_world_dir(args.playground_name),
+        minecraft_world_dir(args.playground_name)))
+
+    ipython_data_backup_dir = args.playground_backup_dir + "/ipython-notebook-root/data"
+    scp_r(ipython_data_backup_dir + "/", ipython_data_dir(args.playground_name) + "/")
+
+    minecraft_world_backup_dir = args.playground_backup_dir + "/minecraft-server/world"
+    scp_r(minecraft_world_backup_dir + "/", minecraft_world_dir(args.playground_name) + "/", )
+
+    start(args)
+from_local_restore_parser = subparsers.add_parser("from_local_restore", help='{} from_local_restore')
+from_local_restore_parser.add_argument('playground_backup_dir', help='local backup dir of playground')
+from_local_restore_parser.set_defaults(func=from_local_restore)
 
 def get_all_playground_config():
     all_config = {}
