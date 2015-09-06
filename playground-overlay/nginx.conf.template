@@ -2,13 +2,14 @@
 
 location /${playground_name}/ {
   auth_basic "Login Required";
-  auth_basic_user_file /home/ubuntu/playgrounds/bar/htpasswd_file;
+  auth_basic_user_file /home/ubuntu/playgrounds/${playground_name}/htpasswd_file;
+
+  location /${playground_name}/python/ {
+    proxy_pass http://127.0.0.1:${ipython_notebook_server_http_port};
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $$http_upgrade; # dollar-dollar escapes to dollar w/ python string.Template
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Origin "";
+  }
 }
 
-location /${playground_name}/python/ {
-  proxy_pass http://127.0.0.1:${ipython_notebook_server_http_port};
-  proxy_http_version 1.1;
-  proxy_set_header Upgrade $$http_upgrade; # dollar-dollar escapes to dollar w/ python string.Template
-  proxy_set_header Connection "upgrade";
-  proxy_set_header Origin "";
-}
