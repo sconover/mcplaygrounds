@@ -9,7 +9,8 @@ import time
 from string import Template
 
 from lib import const
-from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, scp_r_remote_to_local, BaseSettingsClass, load_config
+from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, scp_r_remote_to_local
+from lib.playground_config import PlaygroundConfig, load_playground_config
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 oogway_relative_dir = os.path.join(this_dir, "../oogway")
@@ -18,32 +19,6 @@ sys.path.append(oogway_relative_dir)
 import oogway
 
 OVERLAY_STAGING_DIR = "/tmp/playground-staging"
-
-class PlaygroundConfig(BaseSettingsClass):
-    def __init__(self):
-        self.playground_name = None
-        self.minecraft_server_port = None
-        self.minecraft_gamemode = None
-        self.minecraft_force_gamemode = None
-        self.minecraft_spawn_monsters = None
-        self.minecraft_player_idle_timeout = None
-        self.minecraft_announce_player_achievements = None
-        self.minecraft_whitelist = None
-        self.minecraft_whitelist_json = None
-        self.raspberry_juice_sponge_plugin_port = None
-        self.ipython_notebook_server_http_port = None
-        self.web_password = None
-        self.initial_minecraft_player_name_for_oogway = None
-        self._freeze() # no more attribute definitions are allowed
-
-DEFAULT_CONFIG = PlaygroundConfig()
-DEFAULT_CONFIG.minecraft_gamemode = 1 # creative
-DEFAULT_CONFIG.minecraft_force_gamemode = True
-DEFAULT_CONFIG.minecraft_spawn_monsters = False
-DEFAULT_CONFIG.minecraft_player_idle_timeout = 1440 # 1 day
-DEFAULT_CONFIG.minecraft_announce_player_achievements = False # annoying
-DEFAULT_CONFIG.minecraft_whitelist = True
-DEFAULT_CONFIG.minecraft_whitelist_json = "[]"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('playground_name', type=str, help='help TODO')
@@ -58,9 +33,6 @@ def pdir(playground_name):
 def copy_minecraft_server_files(playground_name):
     ssh_exec("file {}/minecraft-server || (mkdir {}/minecraft-server && cp -R {}/. {}/minecraft-server/)".format(
         pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
-
-def load_playground_config(playground_name, config_path):
-    return load_config(playground_name, PlaygroundConfig, DEFAULT_CONFIG, 'playground_name', config_path)
 
 def stage_overlay_files(playground_config):
     shutil.rmtree(OVERLAY_STAGING_DIR, ignore_errors=True)

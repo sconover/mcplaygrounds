@@ -1,0 +1,147 @@
+#!/usr/bin/env python
+
+import sys
+import json
+import argparse
+import os.path
+import subprocess
+
+from lib.playground_config import PlaygroundConfig, load_playground_config
+
+USB_STICK_STAGING_DIR = "/tmp/playground-usb-stick-staging"
+MAC_LAUNCHER_PROFILE_JSON_PATH = 'Mac/StartMinecraft.app/Contents/MacOS/Library/Application Support/minecraft/launcher_profiles.json'
+WINDOWS_LAUNCHER_PROFILE_JSON_PATH = 'Windows/Minecraft/Data/.minecraft/launcher_profiles.json'
+
+parser = argparse.ArgumentParser()
+parser.add_argument('playground_name', type=str, help='help TODO')
+subparsers = parser.add_subparsers(help='sub-command help')
+
+def destructive_rsync(src, dest):
+    if not os.path.isdir(src):
+        raise Exception(src  + " does not exist.")
+
+    if not os.path.isdir(dest):
+        raise Exception(dest  + " does not exist.")
+
+    cmd = [
+        "/usr/bin/rsync",
+        "--size-only",
+        "--omit-dir-times",
+        "-avz",
+        "--delete",
+        src + "/",
+        dest + "/"
+    ]
+    if subprocess.call(cmd)!=0:
+        raise Exception("FAILED: {}".format(" ".join(cmd)))
+
+def verify_dir_contains_seemingly_valid_image(target_dir):
+    if not os.path.isdir(target_dir + "/Mac") or not os.path.isdir(target_dir + "/Windows"):
+        raise Exception(target_dir  + " does not appear to contain a valid usb stick image.")
+
+def load_launcher_profile_for_player(launcher_profile_json_file, player_name):
+    reference_minecraft_profiles = json.loads(open(launcher_profile_json_file).read())
+    entry = None
+    for player_uuid in reference_minecraft_profiles["authenticationDatabase"]:
+        maybe_entry = reference_minecraft_profiles["authenticationDatabase"][player_uuid]
+        if maybe_entry["displayName"] == player_name:
+            return (player_uuid, maybe_entry, reference_minecraft_profiles["clientToken"])
+    raise Exception("no profile found for {} in file {}".format(player_name, launcher_profile_json_file))
+
+def usb_stick_staging_dir(playground_name):
+    return os.path.join(USB_STICK_STAGING_DIR, playground_name)
+
+def overwrite_launcher_file(player_key, player_entry, client_token, launcher_profiles_json_file):
+    content = json.loads(open(launcher_profiles_json_file).read())
+    content["authenticationDatabase"] = {}
+    content["authenticationDatabase"][player_key] = player_entry
+    content["selectedUser"] = player_key
+    content["clientToken"] = client_token
+    content_str = json.dumps(content, sort_keys=True, indent=2, separators=(',', ': '))
+    print "Writing launcher profile json: " + launcher_profiles_json_file
+    print content_str
+    f = open(launcher_profiles_json_file, 'w')
+    f.write(content_str + "\n")
+    f.close()
+
+def pull(args):
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    verify_dir_contains_seemingly_valid_image(playground_config.usb_stick_dir)
+    os.makedirs(usb_stick_staging_dir(args.playground_name))
+    destructive_rsync(playground_config.usb_stick_dir, usb_stick_staging_dir(args.playground_name))
+pull_parser = subparsers.add_parser("pull", help='{} pull')
+pull_parser.add_argument('playground_config_file', help='json config for playgrounds')
+pull_parser.set_defaults(func=pull)
+
+def pristine(args):
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    verify_dir_contains_seemingly_valid_image(args.image_dir)
+    if not os.path.isdir(usb_stick_staging_dir(args.playground_name)):
+        os.makedirs(usb_stick_staging_dir(args.playground_name))
+    destructive_rsync(args.image_dir, usb_stick_staging_dir(args.playground_name))
+pristine_parser = subparsers.add_parser("pristine", help='{} pristine')
+pristine_parser.add_argument('playground_config_file', help='json config for playgrounds')
+pristine_parser.add_argument('image_dir', help='path to reference usb image.')
+pristine_parser.set_defaults(func=pristine)
+
+def customize(args):
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    staging_dir = usb_stick_staging_dir(args.playground_name)
+    verify_dir_contains_seemingly_valid_image(staging_dir)
+
+    player_key, player_entry, client_token = load_launcher_profile_for_player(
+        playground_config.minecraft_reference_launcher_profile_json_file,
+        playground_config.initial_minecraft_player_name_for_oogway)
+    overwrite_launcher_file(player_key, player_entry, client_token, os.path.join(staging_dir, MAC_LAUNCHER_PROFILE_JSON_PATH))
+    overwrite_launcher_file(player_key, player_entry, client_token, os.path.join(staging_dir, WINDOWS_LAUNCHER_PROFILE_JSON_PATH))
+customize_parser = subparsers.add_parser("customize", help='{} customize')
+customize_parser.add_argument('playground_config_file', help='json config for playgrounds')
+customize_parser.set_defaults(func=customize)
+
+def push(args):
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    staging_dir = usb_stick_staging_dir(args.playground_name)
+    verify_dir_contains_seemingly_valid_image(staging_dir)
+    destructive_rsync(staging_dir, playground_config.usb_stick_dir)
+pull_parser = subparsers.add_parser("push", help='{} push')
+pull_parser.add_argument('playground_config_file', help='json config for playgrounds')
+pull_parser.set_defaults(func=push)
+
+
+def backup_and_sync_image(args):
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+
+    verify_dir_contains_seemingly_valid_image(args.image_dir)
+
+    # backup
+    if not os.listdir(playground_config.usb_stick_dir) == []:
+        verify_dir_contains_seemingly_valid_image(playground_config.usb_stick_dir)
+
+        if os.path.isdir(args.backup_dir):
+            # sanity check the backup
+            verify_dir_contains_seemingly_valid_image(args.backup_dir)
+        else:
+            os.makedirs(args.backup_dir)
+
+        destructive_rsync(playground_config.usb_stick_dir, args.backup_dir)
+
+    destructive_rsync(args.image_dir, playground_config.usb_stick_dir)
+
+backup_and_sync_image_parser = subparsers.add_parser("backup_and_sync_image", help='{} overlay')
+backup_and_sync_image_parser.add_argument('playground_config_file', help='json config for playgrounds')
+backup_and_sync_image_parser.add_argument('backup_dir', help='current usb stick state will be rsynced to this directory.')
+backup_and_sync_image_parser.add_argument('image_dir', help='path to usb image. after sync, usb stick will have these exact contents.')
+backup_and_sync_image_parser.set_defaults(func=backup_and_sync_image)
+
+def destructive_sync_image(args):
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    verify_dir_contains_seemingly_valid_image(args.image_dir)
+    destructive_rsync(args.image_dir, playground_config.usb_stick_dir)
+
+backup_and_sync_image_parser = subparsers.add_parser("destructive_sync_image", help='{} overlay')
+backup_and_sync_image_parser.add_argument('playground_config_file', help='json config for playgrounds')
+backup_and_sync_image_parser.add_argument('image_dir', help='path to usb image. after sync, usb stick will have these exact contents.')
+backup_and_sync_image_parser.set_defaults(func=destructive_sync_image)
+
+args = parser.parse_args()
+args.func(args)

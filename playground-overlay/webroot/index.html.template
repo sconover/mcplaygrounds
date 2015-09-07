@@ -1,0 +1,35 @@
+<html>
+
+<p><h1>This is the Minecraft programming homepage for <b>${playground_name}</b>.</h1></p>
+
+<hr/>
+
+<h2><a href="${usb_stick_howto_url}">Click here for instructions on how to use your USB stick.</a></h2>
+
+<hr/>
+
+<h2>help</h2>
+
+${help_instructions}
+
+<hr/>
+
+<h2>${playground_name}'s programs</h2>
+
+<a href="/${playground_name}/python">Your Python Notebooks (for programming)</a>
+
+<hr/>
+
+<h2>${playground_name}'s minecraft world</h2>
+
+How to get to ${playground_name}'s Minecraft world using your own Minecraft software (rather than your USB stick):
+
+<ol>
+  <li>Run Minecraft.</li>
+  <li>Click the "Multiplayer" button in the middle of the screen.</li>
+  <li>Click the "Direct Connect" button at the bottom of the screen.</li>
+  <li>In the "Server Address" box, enter <pre>${fully_qualified_domain_name}:${minecraft_server_port}</pre></li>
+  <li>Click "Join Server"</li>
+</ol>
+
+</html>

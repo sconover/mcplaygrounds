@@ -1,8 +1,14 @@
 # see http://stackoverflow.com/questions/22665809/how-to-configure-ipython-behind-nginx-in-a-subpath
 
+location = /${playground_name} {
+  rewrite ^ /${playground_name}/ permanent;
+}
+
 location /${playground_name}/ {
   auth_basic "Login Required";
   auth_basic_user_file /home/ubuntu/playgrounds/${playground_name}/htpasswd_file;
+
+  alias /home/ubuntu/playgrounds/${playground_name}/webroot/;
 
   location /${playground_name}/python/ {
     proxy_pass http://127.0.0.1:${ipython_notebook_server_http_port};
