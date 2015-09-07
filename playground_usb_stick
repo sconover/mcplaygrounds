@@ -109,6 +109,7 @@ def pull(args):
     verify_dir_contains_seemingly_valid_image(playground_config.usb_stick_dir)
     os.makedirs(usb_stick_staging_dir(args.playground_name))
     destructive_rsync(playground_config.usb_stick_dir, usb_stick_staging_dir(args.playground_name))
+
 pull_parser = subparsers.add_parser("pull", help='{} pull')
 pull_parser.add_argument('playground_config_file', help='json config for playgrounds')
 pull_parser.set_defaults(func=pull)
@@ -119,6 +120,7 @@ def pristine(args):
     if not os.path.isdir(usb_stick_staging_dir(args.playground_name)):
         os.makedirs(usb_stick_staging_dir(args.playground_name))
     destructive_rsync(args.image_dir, usb_stick_staging_dir(args.playground_name))
+
 pristine_parser = subparsers.add_parser("pristine", help='{} pristine')
 pristine_parser.add_argument('playground_config_file', help='json config for playgrounds')
 pristine_parser.add_argument('image_dir', help='path to reference usb image.')
@@ -152,42 +154,6 @@ def push(args):
 pull_parser = subparsers.add_parser("push", help='{} push')
 pull_parser.add_argument('playground_config_file', help='json config for playgrounds')
 pull_parser.set_defaults(func=push)
-
-
-def backup_and_sync_image(args):
-    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
-
-    verify_dir_contains_seemingly_valid_image(args.image_dir)
-
-    # backup
-    if not os.listdir(playground_config.usb_stick_dir) == []:
-        verify_dir_contains_seemingly_valid_image(playground_config.usb_stick_dir)
-
-        if os.path.isdir(args.backup_dir):
-            # sanity check the backup
-            verify_dir_contains_seemingly_valid_image(args.backup_dir)
-        else:
-            os.makedirs(args.backup_dir)
-
-        destructive_rsync(playground_config.usb_stick_dir, args.backup_dir)
-
-    destructive_rsync(args.image_dir, playground_config.usb_stick_dir)
-
-backup_and_sync_image_parser = subparsers.add_parser("backup_and_sync_image", help='{} overlay')
-backup_and_sync_image_parser.add_argument('playground_config_file', help='json config for playgrounds')
-backup_and_sync_image_parser.add_argument('backup_dir', help='current usb stick state will be rsynced to this directory.')
-backup_and_sync_image_parser.add_argument('image_dir', help='path to usb image. after sync, usb stick will have these exact contents.')
-backup_and_sync_image_parser.set_defaults(func=backup_and_sync_image)
-
-def destructive_sync_image(args):
-    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
-    verify_dir_contains_seemingly_valid_image(args.image_dir)
-    destructive_rsync(args.image_dir, playground_config.usb_stick_dir)
-
-backup_and_sync_image_parser = subparsers.add_parser("destructive_sync_image", help='{} overlay')
-backup_and_sync_image_parser.add_argument('playground_config_file', help='json config for playgrounds')
-backup_and_sync_image_parser.add_argument('image_dir', help='path to usb image. after sync, usb stick will have these exact contents.')
-backup_and_sync_image_parser.set_defaults(func=destructive_sync_image)
 
 args = parser.parse_args()
 args.func(args)
