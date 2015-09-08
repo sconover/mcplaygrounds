@@ -400,7 +400,7 @@ def write_crontab(args):
     all_config = get_all_playground_config()
     for playground_name in all_config:
         crontab_lines.append(
-            at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -jar sponge-minecraft-server.jar run"))
+            at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -Xmx512m -jar sponge-minecraft-server.jar run"))
         crontab_lines.append(
             at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --script --config=ipython_server_config.py    --ipython-dir=."))
     f = open("/tmp/crontab", 'w')
