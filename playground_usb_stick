@@ -6,8 +6,11 @@ import argparse
 import os.path
 import subprocess
 import nbt
+import shutil
 
 from lib.playground_config import PlaygroundConfig, load_playground_config
+
+this_dir = os.path.dirname(os.path.realpath(__file__))
 
 USB_STICK_STAGING_DIR = "/tmp/playground-usb-stick-staging"
 
@@ -19,6 +22,9 @@ WINDOWS_SERVERS_DAT_PATH = 'Windows/Minecraft/Data/.minecraft/servers.dat'
 
 MAC_CHROME_PREFS_JSON_PATH = 'Mac/WebData/Default/Preferences'
 WINDOWS_CHROME_PREFS_JSON_PATH = 'Windows/GoogleChromePortableDev/Data/profile/Default/Preferences'
+
+MAC_MINECRAFT_OPTIONS_TXT_PATH = 'Mac/StartMinecraft.app/Contents/MacOS/Library/Application Support/minecraft/options.txt'
+WINDOWS_MINECRAFT_OPTIONS_TXT_PATH = 'Windows/Minecraft/Data/.minecraft/options.txt'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('playground_name', type=str, help='help TODO')
@@ -47,6 +53,9 @@ def verify_dir_contains_seemingly_valid_image(target_dir):
     if not os.path.isdir(target_dir + "/Mac") or not os.path.isdir(target_dir + "/Windows"):
         raise Exception(target_dir  + " does not appear to contain a valid usb stick image.")
 
+def copy_usb_stick_file(file_name, dest_path):
+    shutil.copyfile(os.path.join(this_dir, "usb-stick-files", file_name), dest_path)
+
 def load_launcher_profile_for_player(launcher_profile_json_file, player_name):
     reference_minecraft_profiles = json.loads(open(launcher_profile_json_file).read())
     entry = None
@@ -73,24 +82,14 @@ def overwrite_launcher_file(player_key, player_entry, client_token, launcher_pro
     f.write(content_str + "\n")
     f.close()
 
-def add_server_to_server_list(servers_dat_file, server_name, server_ip_port):
-    nbtfile = None
-    if os.path.isfile(servers_dat_file):
-        nbtfile = nbt.nbt.NBTFile(buffer=open(servers_dat_file))
-    else:
-        nbtfile = nbt.nbt.NBTFile()
-        servers = nbt.nbt.TAG_List(nbt.nbt.TAG_Compound)
-        servers.name = "servers"
-        nbtfile.tags = [servers]
+def set_minecraft_server_list(servers_dat_file, server_name, server_ip_port):
+    nbtfile = nbt.nbt.NBTFile()
+    servers = nbt.nbt.TAG_List(nbt.nbt.TAG_Compound)
+    servers.name = "servers"
+    nbtfile.tags = [servers]
 
-    server = None
-    for server_tag in nbtfile["servers"].tags:
-        for tag in server_tag:
-            if server_tag[tag].name == "name" and str(server_tag[tag]) == server_name:
-                server = server_tag
-    if server == None:
-        server = nbt.nbt.TAG_Compound()
-        nbtfile["servers"].tags = [server]
+    server = nbt.nbt.TAG_Compound()
+    nbtfile["servers"].tags = [server]
 
     server.tags = [
         nbt.nbt.TAG_String(name=u'name', value=server_name),
@@ -160,14 +159,17 @@ def customize(args):
 
     world_server_name_in_servers_dat = args.playground_name + " server"
     world_server_ip_port = playground_config.fully_qualified_domain_name + ":" + str(playground_config.minecraft_server_port)
-    add_server_to_server_list(os.path.join(staging_dir, MAC_SERVERS_DAT_PATH), world_server_name_in_servers_dat, world_server_ip_port)
-    add_server_to_server_list(os.path.join(staging_dir, WINDOWS_SERVERS_DAT_PATH), world_server_name_in_servers_dat, world_server_ip_port)
+    set_minecraft_server_list(os.path.join(staging_dir, MAC_SERVERS_DAT_PATH), world_server_name_in_servers_dat, world_server_ip_port)
+    set_minecraft_server_list(os.path.join(staging_dir, WINDOWS_SERVERS_DAT_PATH), world_server_name_in_servers_dat, world_server_ip_port)
 
     playground_homepage = "http://" + \
         args.playground_name + ":" + playground_config.web_password + "@" + \
         playground_config.fully_qualified_domain_name + "/" + args.playground_name + "/"
     customize_chrome_preferences(playground_homepage, os.path.join(staging_dir, MAC_CHROME_PREFS_JSON_PATH))
     customize_chrome_preferences(playground_homepage, os.path.join(staging_dir, WINDOWS_CHROME_PREFS_JSON_PATH))
+
+    copy_usb_stick_file('options.txt', os.path.join(staging_dir, MAC_MINECRAFT_OPTIONS_TXT_PATH))
+    copy_usb_stick_file('options.txt', os.path.join(staging_dir, WINDOWS_MINECRAFT_OPTIONS_TXT_PATH))
 
 customize_parser = subparsers.add_parser("customize", help='{} customize')
 customize_parser.add_argument('playground_config_file', help='json config for playgrounds')
