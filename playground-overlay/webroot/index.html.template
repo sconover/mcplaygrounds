@@ -16,7 +16,7 @@ ${help_instructions}
 
 <h2>${playground_name}'s programs</h2>
 
-<a href="/${playground_name}/python">Your Python Notebooks (for programming)</a>
+<a href="http://${playground_name}:${web_password}@${fully_qualified_domain_name}/${playground_name}/python">Your Python Notebooks (for programming)</a>
 
 <hr/>
 
