@@ -17,6 +17,9 @@ WINDOWS_LAUNCHER_PROFILE_JSON_PATH = 'Windows/Minecraft/Data/.minecraft/launcher
 MAC_SERVERS_DAT_PATH = 'Mac/StartMinecraft.app/Contents/MacOS/Library/Application Support/minecraft/servers.dat'
 WINDOWS_SERVERS_DAT_PATH = 'Windows/Minecraft/Data/.minecraft/servers.dat'
 
+MAC_CHROME_PREFS_JSON_PATH = 'Mac/WebData/Default/Preferences'
+WINDOWS_CHROME_PREFS_JSON_PATH = 'Windows/GoogleChromePortableDev/Data/profile/Default/Preferences'
+
 parser = argparse.ArgumentParser()
 parser.add_argument('playground_name', type=str, help='help TODO')
 subparsers = parser.add_subparsers(help='sub-command help')
@@ -104,11 +107,28 @@ def add_server_to_server_list(servers_dat_file, server_name, server_ip_port):
     nbtfile.write_file(buffer=f)
     f.close()
 
+def customize_chrome_preferences(startup_url, chrome_preferences_json_file):
+    chrome_prefs = json.loads(open(chrome_preferences_json_file).read())
+
+    chrome_prefs["session"]["startup_urls"] = [startup_url]
+    chrome_prefs["homepage"] = startup_url
+
+    if "bookmark_bar" not in chrome_prefs:
+        chrome_prefs["bookmark_bar"] = {}
+    chrome_prefs["bookmark_bar"]["show_on_all_tabs"] = False
+
+    chrome_prefs_str = json.dumps(chrome_prefs, sort_keys=True, indent=2, separators=(',', ': '))
+    f = open(chrome_preferences_json_file, 'w')
+    f.write(chrome_prefs_str + "\n")
+    f.close()
+
 def pull(args):
     playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    staging_dir = usb_stick_staging_dir(args.playground_name)
     verify_dir_contains_seemingly_valid_image(playground_config.usb_stick_dir)
-    os.makedirs(usb_stick_staging_dir(args.playground_name))
-    destructive_rsync(playground_config.usb_stick_dir, usb_stick_staging_dir(args.playground_name))
+    if not os.path.isdir(staging_dir):
+        os.makedirs(staging_dir)
+    destructive_rsync(playground_config.usb_stick_dir, staging_dir)
 
 pull_parser = subparsers.add_parser("pull", help='{} pull')
 pull_parser.add_argument('playground_config_file', help='json config for playgrounds')
@@ -116,10 +136,11 @@ pull_parser.set_defaults(func=pull)
 
 def pristine(args):
     playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    staging_dir = usb_stick_staging_dir(args.playground_name)
     verify_dir_contains_seemingly_valid_image(args.image_dir)
-    if not os.path.isdir(usb_stick_staging_dir(args.playground_name)):
-        os.makedirs(usb_stick_staging_dir(args.playground_name))
-    destructive_rsync(args.image_dir, usb_stick_staging_dir(args.playground_name))
+    if not os.path.isdir(staging_dir):
+        os.makedirs(staging_dir)
+    destructive_rsync(args.image_dir, staging_dir)
 
 pristine_parser = subparsers.add_parser("pristine", help='{} pristine')
 pristine_parser.add_argument('playground_config_file', help='json config for playgrounds')
@@ -142,6 +163,12 @@ def customize(args):
     add_server_to_server_list(os.path.join(staging_dir, MAC_SERVERS_DAT_PATH), world_server_name_in_servers_dat, world_server_ip_port)
     add_server_to_server_list(os.path.join(staging_dir, WINDOWS_SERVERS_DAT_PATH), world_server_name_in_servers_dat, world_server_ip_port)
 
+    playground_homepage = "http://" + \
+        args.playground_name + ":" + playground_config.web_password + "@" + \
+        playground_config.fully_qualified_domain_name + "/" + args.playground_name + "/"
+    customize_chrome_preferences(playground_homepage, os.path.join(staging_dir, MAC_CHROME_PREFS_JSON_PATH))
+    customize_chrome_preferences(playground_homepage, os.path.join(staging_dir, WINDOWS_CHROME_PREFS_JSON_PATH))
+
 customize_parser = subparsers.add_parser("customize", help='{} customize')
 customize_parser.add_argument('playground_config_file', help='json config for playgrounds')
 customize_parser.set_defaults(func=customize)
@@ -151,6 +178,7 @@ def push(args):
     staging_dir = usb_stick_staging_dir(args.playground_name)
     verify_dir_contains_seemingly_valid_image(staging_dir)
     destructive_rsync(staging_dir, playground_config.usb_stick_dir)
+
 pull_parser = subparsers.add_parser("push", help='{} push')
 pull_parser.add_argument('playground_config_file', help='json config for playgrounds')
 pull_parser.set_defaults(func=push)
