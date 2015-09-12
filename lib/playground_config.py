@@ -17,6 +17,7 @@ class PlaygroundConfig(BaseSettingsClass):
         self.initial_minecraft_player_name_for_oogway = None
         self.fully_qualified_domain_name = None
         self.help_instructions = None
+        self.lesson_url = None
         self.usb_stick_howto_url = None
         self.usb_stick_dir = None
         self.minecraft_reference_launcher_profile_json_file = None

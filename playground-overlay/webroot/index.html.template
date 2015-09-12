@@ -4,6 +4,7 @@
 
 <hr/>
 
+<h2><a href="${lesson_url}">Click here for class lesson notes.</a></h2>
 <h2><a href="${usb_stick_howto_url}">Click here for instructions on how to use your USB stick.</a></h2>
 
 <hr/>

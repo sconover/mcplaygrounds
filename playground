@@ -397,6 +397,7 @@ def at_reboot_tmux_crontab_line(playground_name, subdir, tmux_session_suffix, co
 
 def write_crontab(args):
     crontab_lines = []
+    crontab_lines.append("@reboot /usr/bin/tmux new-session -s dstat -d '/usr/bin/dstat --time --load --mem --net  --io --swap --page --sys'")
     all_config = get_all_playground_config()
     for playground_name in all_config:
         crontab_lines.append(
