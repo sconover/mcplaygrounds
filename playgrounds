@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+
+import argparse
+import subprocess
+import os
+import re
+from lib.core import ssh_get
+
+this_dir = os.path.dirname(os.path.realpath(__file__))
+
+def run_all(args):
+  individual_command_args = args.command
+
+  actual_playgrounds = ssh_get("ls playgrounds").strip().split("\n")
+
+  playground_names = []
+  if args.playground_names.startswith("/") and args.playground_names.endswith("/"):
+    regex_str = args.playground_names[1:-1]
+    print "Filtering playground list '{}' using regex '{}'".format(",".join(actual_playgrounds), regex_str)
+    r = re.compile(regex_str)
+    for playground_name in actual_playgrounds:
+      if r.match(playground_name):
+        playground_names.append(playground_name)
+  else:
+    playground_names = args.playground_names.split(",")
+    unknown_playgrounds = list(set(playground_names)-set(actual_playgrounds))
+    if len(unknown_playgrounds) > 0:
+      raise Exception("Unknown playgrounds specified: '{}'. Actual playgrounds: '{}' ".format(
+          ",".join(unknown_playgrounds),
+          ",".join(actual_playgrounds)))
+
+  if len(playground_names) == 0:
+    raise Exception("No playgrounds matched " + playground_names)
+
+  print "PLAYGROUNDS: " + ",".join(playground_names)
+
+  for playground_name in playground_names:
+    cmd_parts = [this_dir + "/playground", playground_name]
+    cmd_parts.extend(individual_command_args)
+    cmd = " ".join(cmd_parts)
+    print "\n\nRUNNING(" + playground_name + "): " + cmd
+    if subprocess.call(cmd_parts)!=0:
+        raise Exception("FAILED: " + cmd)
+
+parser = argparse.ArgumentParser()
+parser.add_argument('playground_names', type=str, help='help TODO')
+parser.add_argument('command', nargs='+', help='the playground command')
+parser.set_defaults(func=run_all)
+
+args = parser.parse_args()
+args.func(args)
