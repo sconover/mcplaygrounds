@@ -1,0 +1,51 @@
+#!/usr/bin/python
+
+# This script will start or stop an ec2 instance based on an ical url, such as one
+# based on a public google calendar.
+#
+# By default, the server is up (i.e., nothing is scheduled on the calendar)
+# Events on the calendar are treated as defining downtime. You may want to reinforce this
+# by naming the event something like "Server off".
+#
+# requirement: install awscli (sudo apt-get install awscli) and configure it (aws configure)
+# manage online schedule of a server in ec2
+#
+# you can run a t2.micro instance in ec2 that acts as an orchestrator. That's $10/month fixed cost
+# (i.e. you could manage many servers with the t2.micro)
+#
+# run this in tmux:
+# while :; do ./manage_ec2_instance_schedule_with_gcal_v1 https://www.google.com/calendar/ical/some-gcal-url/public/basic.ics i-5aed822c us-west-2; sleep 15; done
+#
+# This way, you can make changes to server up/down status by simply making changes to the schedule on the calendar.
+
+import sys
+import subprocess
+import time
+
+ical_url = sys.argv[1]
+ec2_instance_id = sys.argv[2]
+ec2_region = sys.argv[3]
+
+ical_content = subprocess.check_output(["/usr/bin/curl", "-s", ical_url]).strip()
+start_end_lines = filter(lambda line: line.startswith("DTSTART") or line.startswith("DTEND"), ical_content.split("\n"))
+busy_ranges = []
+for line in start_end_lines:
+    label, time_str = line.split(":")
+    if label == "DTSTART":
+        busy_ranges.append((time.strptime(time_str.strip(), "%Y%m%dT%H%M%SZ"), None))
+    else:
+        busy_ranges[-1] = (busy_ranges[-1][0], time.strptime(time_str.strip(), "%Y%m%dT%H%M%SZ"))
+
+now = time.gmtime()
+now_str = time.strftime("%Y-%m-%d %H:%M:%S", now)
+
+if len(filter(lambda busy_range: now > busy_range[0] and now < busy_range[1], busy_ranges)) > 0:
+    cmd_parts = ["aws", "ec2", "stop-instances", "--instance-ids", ec2_instance_id, "--region", ec2_region, "--output", "text"]
+    print "As of " + now_str + " detected busy on calendar, stopping instance:"
+    print " ".join(cmd_parts)
+    subprocess.call(cmd_parts)
+else:
+    cmd_parts = ["aws", "ec2", "start-instances", "--instance-ids", ec2_instance_id, "--region", ec2_region, "--output", "text"]
+    print "As of " + now_str + " deteacted non-busy on calendar, starting instance:"
+    print " ".join(cmd_parts)
+    subprocess.call(cmd_parts)
