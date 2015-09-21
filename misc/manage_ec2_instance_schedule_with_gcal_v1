@@ -18,34 +18,77 @@
 #
 # This way, you can make changes to server up/down status by simply making changes to the schedule on the calendar.
 
+
+# https://nylas.com/blog/rrules/
+
 import sys
 import subprocess
 import time
+import icalendar
+import datetime
+import dateutil
+import pytz
 
 ical_url = sys.argv[1]
 ec2_instance_id = sys.argv[2]
 ec2_region = sys.argv[3]
 
+
 ical_content = subprocess.check_output(["/usr/bin/curl", "-s", ical_url]).strip()
-start_end_lines = filter(lambda line: line.startswith("DTSTART") or line.startswith("DTEND"), ical_content.split("\n"))
-busy_ranges = []
-for line in start_end_lines:
-    label, time_str = line.split(":")
-    if label == "DTSTART":
-        busy_ranges.append((time.strptime(time_str.strip(), "%Y%m%dT%H%M%SZ"), None))
-    else:
-        busy_ranges[-1] = (busy_ranges[-1][0], time.strptime(time_str.strip(), "%Y%m%dT%H%M%SZ"))
+cal = icalendar.Calendar.from_ical(ical_content)
+#print cal.to_ical()
+this_tz=pytz.timezone('US/Pacific')
+now = datetime.datetime.now(this_tz).replace(tzinfo=None)
 
-now = time.gmtime()
-now_str = time.strftime("%Y-%m-%d %H:%M:%S", now)
-
-if len(filter(lambda busy_range: now > busy_range[0] and now < busy_range[1], busy_ranges)) > 0:
+print "=== start evaluation ==="
+in_busy_period = False
+print "  now=" + str(now)
+for component in cal.walk():
+    if component.name == "VEVENT":
+        if 'RRULE' in component:
+            print "  " + component.get('summary')
+            start = component['DTSTART'].dt.replace(tzinfo=None)
+            rrule = dateutil.rrule.rrulestr(component['RRULE'].to_ical(), dtstart=start)
+            rruleset = dateutil.rrule.rruleset()
+            rruleset.rrule(rrule)
+            print "    rrule=" + str(component['RRULE'].to_ical())
+            print "    start=" + str(start)
+            if 'EXDATE' in component:
+                dts = []
+                for entry in component['EXDATE']:
+                    for some_dt in entry.dts:
+                        dt = some_dt.dt.replace(tzinfo=None)
+                        dts.append(str(dt))
+                        rruleset.exdate(dt)
+                print "    excluding dates=" + ",".join(dts)
+            event_duration = component.get('DTEND').dt - component.get('DTSTART').dt
+            recent_from_dt = rruleset.before(now)
+            recent_to_dt = recent_from_dt + event_duration
+            print "    event_duration=" + str(event_duration)
+            print "    recent_from_dt=" + str(recent_from_dt)
+            print "    recent_to_dt=" + str(recent_to_dt)
+            overlaps_now = recent_from_dt <= now <= recent_to_dt
+            print "    overlaps_now=" + str(overlaps_now)
+            if overlaps_now:
+                in_busy_period = True
+        else:
+           print "  " + component.get('summary')
+           start = component['DTSTART'].dt.astimezone(this_tz).replace(tzinfo=None)
+           end = component['DTEND'].dt.astimezone(this_tz).replace(tzinfo=None)
+           print "    start=" + str(start)
+           print "    end=" + str(end)
+           overlaps_now = start <= now <= end
+           print "    overlaps_now=" + str(overlaps_now)
+           if overlaps_now:
+                in_busy_period = True
+print "=== end evaluation. in_busy_period=" + str(in_busy_period) + " ==="
+if in_busy_period:
     cmd_parts = ["aws", "ec2", "stop-instances", "--instance-ids", ec2_instance_id, "--region", ec2_region, "--output", "text"]
-    print "As of " + now_str + " detected busy on calendar, stopping instance:"
+    print "As of " + str(now) + " detected busy on calendar, stopping instance:"
     print " ".join(cmd_parts)
     subprocess.call(cmd_parts)
 else:
     cmd_parts = ["aws", "ec2", "start-instances", "--instance-ids", ec2_instance_id, "--region", ec2_region, "--output", "text"]
-    print "As of " + now_str + " deteacted non-busy on calendar, starting instance:"
+    print "As of " + str(now) + " deteacted non-busy on calendar, starting instance:"
     print " ".join(cmd_parts)
     subprocess.call(cmd_parts)
