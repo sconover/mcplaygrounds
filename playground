@@ -221,16 +221,45 @@ def destroy(args):
 add_simple_subparser(destroy)
 
 def ipython_data_dir(playground_name):
-    return "{}/ipython-notebook-root/data".format(pdir(args.playground_name))
+    return "{}/ipython-notebook-root/data".format(pdir(playground_name))
 
 def minecraft_world_dir(playground_name):
-    return "{}/minecraft-server/world".format(pdir(args.playground_name))
+    return "{}/minecraft-server/world".format(pdir(playground_name))
 
-#TODO: add: playground list
-#then, bash script to quickly backup all playgrounds, on the server, is possible
-  # or make "playgrounds" ?
-  # default is *. also accepts comma-delimited list
-  # does some chanking, but then just executes playground commands in a loop
+# TODO: backup ipynb's
+# TODO: delete ipynb's with name match
+# TODO: ...then copy the ipynb's
+
+
+def quick_backup_ipython_notebooks(playground_name):
+    backup_dir = os.path.join("ipython_quick_backups", time.strftime("%Y%m%dT%H%M%S") + "-" + playground_name)
+    backup_ipython_notebooks(playground_name, backup_dir)
+
+def copy_ipynb(args):
+    quick_backup_ipython_notebooks(args.playground_name)
+    existing_ipynb_wildcard = os.path.join(ipython_data_dir(args.playground_name), args.ipynb_wildcard + ".ipynb")
+    ipynb_wildcard = os.path.join(ipython_data_dir(args.source_playground_name), args.ipynb_wildcard + ".ipynb")
+    ipynbs = ssh_get("ls {}".format(ipynb_wildcard)).strip().split("\n")
+
+    if len(ipynbs) == 0:
+        raise Exception("No ipython notebooks found matching {}".format(ipynb_wildcard))
+    else:
+        print "will copy:"
+        for ipynb in ipynbs:
+            print ipynb
+    ssh_exec("rm {}".format(existing_ipynb_wildcard))
+    ssh_exec("cp {} {}".format(ipynb_wildcard, ipython_data_dir(args.playground_name)))
+copy_ipynb_parser = subparsers.add_parser("copy-ipynb", help='{} copy-ipynb')
+copy_ipynb_parser.add_argument('source_playground_name', help='the playground that has the ipython notebook(s)')
+copy_ipynb_parser.add_argument('ipynb_wildcard', help='wildcard that matches ipython notebook(s)')
+copy_ipynb_parser.set_defaults(func=copy_ipynb)
+
+def backup_ipython_notebooks(playground_name, ipython_data_backup_dir):
+    print "backing up {} ipython notebooks to {}".format(playground_name, ipython_data_backup_dir)
+    ssh_exec_all([
+        "mkdir -p " + ipython_data_backup_dir,
+        "cp -r " + ipython_data_dir(playground_name) + "/* " + ipython_data_backup_dir + "/"
+    ])
 
 def on_server_backup(args):
     ssh_exec("mkdir -p " + args.backup_dir)
@@ -240,10 +269,7 @@ def on_server_backup(args):
     stop(args)
 
     ipython_data_backup_dir = playground_backup_dir + "/ipython-notebook-root/data"
-    ssh_exec_all([
-        "mkdir -p " + ipython_data_backup_dir,
-        "cp -r " + ipython_data_dir(args.playground_name) + "/* " + ipython_data_backup_dir + "/"
-    ])
+    backup_ipython_notebooks(args.playground_name, ipython_data_backup_dir)
 
     minecraft_world_backup_dir = playground_backup_dir + "/minecraft-server/world"
     ssh_exec_all([
