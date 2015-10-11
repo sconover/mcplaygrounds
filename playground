@@ -133,6 +133,7 @@ def refresh_ipython(args):
     ])
     scp_r(this_dir + "/codeshare/extract.py", "{}/ipython-notebook-root/lib/codeshare/".format(pdir(args.playground_name)))
     scp_r(this_dir + "/codeshare/ipynb_util.py", "{}/ipython-notebook-root/lib/codeshare/".format(pdir(args.playground_name)))
+    scp_r(this_dir + "/codeshare/document.py", "{}/ipython-notebook-root/lib/codeshare/".format(pdir(args.playground_name)))
 add_simple_subparser(refresh_ipython)
 
 def create(args):

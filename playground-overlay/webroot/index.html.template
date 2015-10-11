@@ -4,26 +4,22 @@
 
 <hr/>
 
-<h2><a href="${lesson_url}">Click here for class lesson notes.</a></h2>
-<h2><a href="${usb_stick_howto_url}">Click here for instructions on how to use your USB stick.</a></h2>
+<ul>
+<li><a href="http://${playground_name}:${web_password}@${fully_qualified_domain_name}/${playground_name}/python"><b>${playground_name}'s python programs</b></a>
+<li><a href="http://${playground_name}:${web_password}@${fully_qualified_domain_name}/${playground_name}/doc.html">List of shared functions</a>
+<li><a href="http://${playground_name}:${web_password}@${fully_qualified_domain_name}/${playground_name}/maps/#map_${playground_name}_world/0/0/189/-195/64">A Google Map-like view of Your World (you can see other player's maps too)</a>
+</ul>
+
+<ul>
+<li><a href="${lesson_url}">Click here for class lesson notes.</a>
+<li><a href="${usb_stick_howto_url}">Click here for instructions on how to use your USB stick.</a>
+</ul>
 
 <hr/>
 
 <h2>help</h2>
 
 ${help_instructions}
-
-<hr/>
-
-<h2>${playground_name}'s programs</h2>
-
-<a href="http://${playground_name}:${web_password}@${fully_qualified_domain_name}/${playground_name}/python">Your Python Notebooks (for programming)</a>
-
-<hr/>
-
-<h2>${playground_name}'s world map</h2>
-
-<a href="http://${playground_name}:${web_password}@${fully_qualified_domain_name}/${playground_name}/maps/#map_${playground_name}_world/0/0/189/-195/64">A Google Map-like view of Your World (you can see other player's maps too)</a>
 
 <hr/>
 
