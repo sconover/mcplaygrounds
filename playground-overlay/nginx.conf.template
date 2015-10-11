@@ -17,5 +17,13 @@ location /${playground_name}/ {
     proxy_set_header Connection "upgrade";
     proxy_set_header Origin "";
   }
+
+  location = /${playground_name}/maps {
+    rewrite ^ /${playground_name}/maps/ permanent;
+  }
+
+  location /${playground_name}/maps/ {
+    alias /home/ubuntu/maps/;
+  }
 }
 

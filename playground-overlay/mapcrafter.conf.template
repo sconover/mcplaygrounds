@@ -1,0 +1,8 @@
+output_dir = /home/ubuntu/playgrounds/${playground_name}/webroot/map
+
+[world:${playground_name}_world]
+input_dir = /home/ubuntu/playgrounds/${playground_name}/minecraft-server/world
+
+[map:map_${playground_name}_world]
+name = ${playground_name} world
+world = ${playground_name}_world

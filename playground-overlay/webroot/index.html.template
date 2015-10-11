@@ -21,6 +21,12 @@ ${help_instructions}
 
 <hr/>
 
+<h2>${playground_name}'s world map</h2>
+
+<a href="http://${playground_name}:${web_password}@${fully_qualified_domain_name}/${playground_name}/maps/#map_${playground_name}_world/0/0/189/-195/64">A Google Map-like view of Your World (you can see other player's maps too)</a>
+
+<hr/>
+
 <h2>${playground_name}'s minecraft world</h2>
 
 How to get to ${playground_name}'s Minecraft world using your own Minecraft software (rather than your USB stick):

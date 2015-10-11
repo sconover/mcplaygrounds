@@ -4,5 +4,8 @@ c.IPKernelApp.exec_lines = [
   "def connect(): return minecraft.Minecraft.create(port=${raspberry_juice_sponge_plugin_port})",
   "from mcgamedata import block, living",
   "from oogway.turtle import *",
-  "init(connect, player='${initial_minecraft_player_name_for_oogway}')"
+  "init(connect, player='${initial_minecraft_player_name_for_oogway}')",
+  "%load_ext autoreload",
+  "%autoreload 2",
+  "from share import *"
 ]

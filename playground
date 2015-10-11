@@ -71,6 +71,7 @@ def create_and_link_shared_dir(playground_config):
     ssh_exec("file ipython-share || mkdir ipython-share")
     ssh_exec("touch ipython-share/__init__.py")
     ssh_exec("ln -nsf /home/ubuntu/ipython-share {}/ipython-notebook-root/data/share".format(pdir(playground_config.playground_name)))
+    scp_r(this_dir + "/misc/data_share_init.py", "{}/ipython-notebook-root/data/share/__init__.py".format(pdir(playground_config.playground_name)))
 
 def upload_staged_files(playground_name):
     scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
@@ -127,8 +128,11 @@ def refresh_ipython(args):
         "mkdir -p {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
         "cp -r mcpi/mcpi {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
         "cp -r mcgamedata/mcgamedata {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
-        "cp -r oogway/oogway {}/ipython-notebook-root/lib/".format(pdir(args.playground_name))
+        "cp -r oogway/oogway {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
+        "mkdir -p {}/ipython-notebook-root/lib/codeshare".format(pdir(args.playground_name))
     ])
+    scp_r(this_dir + "/codeshare/extract.py", "{}/ipython-notebook-root/lib/codeshare/".format(pdir(args.playground_name)))
+    scp_r(this_dir + "/codeshare/ipynb_util.py", "{}/ipython-notebook-root/lib/codeshare/".format(pdir(args.playground_name)))
 add_simple_subparser(refresh_ipython)
 
 def create(args):
@@ -137,6 +141,7 @@ def create(args):
     refresh_ipython(args)
     overlay(args)
     write_crontab(args)
+    write_mapcrafter_conf(args)
 create_parser = subparsers.add_parser("create", help='{} overlay')
 create_parser.add_argument('playground_config_file', help='json config for playgrounds')
 create_parser.set_defaults(func=create)
@@ -247,7 +252,7 @@ def copy_ipynb(args):
         print "will copy:"
         for ipynb in ipynbs:
             print ipynb
-    ssh_exec("rm {}".format(existing_ipynb_wildcard))
+    ssh_exec("rm {} || true".format(existing_ipynb_wildcard))
     ssh_exec("cp {} {}".format(ipynb_wildcard, ipython_data_dir(args.playground_name)))
 copy_ipynb_parser = subparsers.add_parser("copy-ipynb", help='{} copy-ipynb')
 copy_ipynb_parser.add_argument('source_playground_name', help='the playground that has the ipython notebook(s)')
@@ -424,18 +429,38 @@ def at_reboot_tmux_crontab_line(playground_name, subdir, tmux_session_suffix, co
 def write_crontab(args):
     crontab_lines = []
     crontab_lines.append("@reboot /usr/bin/tmux new-session -s dstat -d '/usr/bin/dstat --time --load --mem --net  --io --swap --page --sys'")
+    crontab_lines.append("@reboot /usr/bin/tmux new-session -s mapcrafter -d 'while :; do ls playgrounds/*/mapcrafter.conf | xargs -L 1 nice -n 20 /usr/bin/mapcrafter -c; sleep 30; done'")
     all_config = get_all_playground_config()
     for playground_name in all_config:
         crontab_lines.append(
             at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -Xmx512m -jar sponge-minecraft-server.jar run"))
         crontab_lines.append(
-            at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --script --config=ipython_server_config.py    --ipython-dir=."))
+            at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py    --ipython-dir=."))
     f = open("/tmp/crontab", 'w')
     f.write("\n".join(crontab_lines) + "\n")
     f.close()
     scp_r("/tmp/crontab", "new-crontab")
     ssh_exec("cat new-crontab | crontab -")
 add_simple_subparser(write_crontab)
+
+def write_mapcrafter_conf(args):
+    lines = []
+    lines.append("output_dir = /home/ubuntu/maps")
+    lines.append("")
+    all_config = get_all_playground_config()
+    for playground_name in all_config:
+        lines.append("[world:{}_world]".format(playground_name))
+        lines.append("input_dir = /home/ubuntu/playgrounds/{}/minecraft-server/world".format(playground_name))
+        lines.append("")
+        lines.append("[map:map_{}_world]".format(playground_name))
+        lines.append("name = {} world".format(playground_name))
+        lines.append("world = {}_world".format(playground_name))
+        lines.append("")
+    f = open("/tmp/mapcrafter.conf", 'w')
+    f.write("\n".join(lines) + "\n")
+    f.close()
+    scp_r("/tmp/mapcrafter.conf", "mapcrafter.conf")
+add_simple_subparser(write_mapcrafter_conf)
 
 args = parser.parse_args()
 args.func(args)
