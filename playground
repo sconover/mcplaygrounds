@@ -430,7 +430,7 @@ def at_reboot_tmux_crontab_line(playground_name, subdir, tmux_session_suffix, co
 def write_crontab(args):
     crontab_lines = []
     crontab_lines.append("@reboot /usr/bin/tmux new-session -s dstat -d '/usr/bin/dstat --time --load --mem --net  --io --swap --page --sys'")
-    crontab_lines.append("@reboot /usr/bin/tmux new-session -s mapcrafter -d 'while :; do ls playgrounds/*/mapcrafter.conf | xargs -L 1 nice -n 20 /usr/bin/mapcrafter -c; sleep 30; done'")
+    crontab_lines.append("@reboot /usr/bin/tmux new-session -s mapcrafter -d 'while :; do nice -n 20 /usr/bin/mapcrafter -c mapcrafter.conf; sleep 30; done'")
     all_config = get_all_playground_config()
     for playground_name in all_config:
         crontab_lines.append(

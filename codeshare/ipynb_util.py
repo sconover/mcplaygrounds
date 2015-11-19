@@ -21,7 +21,24 @@ def extract_functions_from_ipynb_files(glob_path):
 
 def extract_functions_from_ipynb_files_and_write_to_file_if_successful(glob_path, target_python_file):
     try:
-        content = extract_functions_from_ipynb_files(glob_path)
+        content = "\n".join([
+            "import sys",
+            "import os",
+            "import importlib",
+            "",
+            "this_dir = os.path.dirname(os.path.realpath(__file__))",
+            "sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), \"../../lib\"))",
+            "",
+            "local_files = [f for f in os.listdir(this_dir) if f.endswith('.py') and os.path.basename(__file__) != f and not f.startswith('_')]",
+            "module_names = map(lambda f: f.replace('.py', ''), local_files)",
+            "for m in module_names:",
+            "    globals()[m] = importlib.import_module(m)",
+            "",
+            "from mcgamedata import block, living",
+            "from oogway.turtle import *",
+            ""
+        ])
+        content += extract_functions_from_ipynb_files(glob_path)
         f = open(target_python_file, "w")
         f.write(content)
         f.close()

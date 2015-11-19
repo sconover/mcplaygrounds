@@ -18,7 +18,7 @@ def gen_simple_html_documentation(code_dir, target_html_file):
                 function_name = module_name + "." + child.name + \
                     "(" + ",".join(map(lambda a: a.id, child.args.args)) + ")"
                 html_docstring = ast.get_docstring(child).replace("\n", "<br/>")
-                doc_lines.append("<p><b><pre>" + function_name.strip() + "</pre></b><blockquote><pre>" + html_docstring + "</pre></blockquote>")
+                doc_lines.append("<p><b><pre>" + function_name.strip() + "</b> " + html_docstring + "</pre>")
 
     f = open(target_html_file, "w")
     f.write("\n".join(doc_lines))
