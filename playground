@@ -220,6 +220,13 @@ def update(args):
     create(args)
 add_simple_subparser(update)
 
+def update_raspberry_plugin(args):
+    stop_minecraft(args)
+    ssh_exec("rm " + pdir(args.playground_name) + "/minecraft-server/mods/* && cp minecraft-latest/mods/* " +
+        pdir(args.playground_name) + "/minecraft-server/mods/")
+    start_minecraft(args)
+add_simple_subparser(update_raspberry_plugin)
+
 def destroy(args):
     exists(args)
     stop(args)
@@ -434,7 +441,7 @@ def write_crontab(args):
     all_config = get_all_playground_config()
     for playground_name in all_config:
         crontab_lines.append(
-            at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -Xmx512m -jar sponge-minecraft-server.jar run"))
+            at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -Xmx2g -Xms2g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -Xmn512m -XX:ParallelGCThreads=4 -jar sponge-minecraft-server.jar run"))
         crontab_lines.append(
             at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py    --ipython-dir=."))
     f = open("/tmp/crontab", 'w')
