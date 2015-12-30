@@ -117,6 +117,7 @@ def overlay(args):
     upload_staged_files(args.playground_name)
     reset_basic_auth_password(args.playground_name, playground_config.web_password)
     reload_nginx()
+    write_crontab(args)
 overlay_parser = subparsers.add_parser("overlay", help='{} overlay')
 overlay_parser.add_argument('playground_config_file', help='json config for playgrounds')
 overlay_parser.set_defaults(func=overlay)
@@ -440,10 +441,12 @@ def write_crontab(args):
     crontab_lines.append("@reboot /usr/bin/tmux new-session -s mapcrafter -d 'while :; do nice -n 20 /usr/bin/mapcrafter -c mapcrafter.conf; sleep 30; done'")
     all_config = get_all_playground_config()
     for playground_name in all_config:
-        crontab_lines.append(
-            at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -Xmx2g -Xms2g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -Xmn512m -XX:ParallelGCThreads=4 -jar sponge-minecraft-server.jar run"))
-        crontab_lines.append(
-            at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py    --ipython-dir=."))
+        if all_config[playground_name].minecraft_server_port:
+            crontab_lines.append(
+                at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -Xmx3g -Xms3g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -Xmn512m -XX:ParallelGCThreads=4 -jar sponge-minecraft-server.jar run"))
+        if all_config[playground_name].ipython_notebook_server_http_port:
+            crontab_lines.append(
+                at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py    --ipython-dir=."))
     f = open("/tmp/crontab", 'w')
     f.write("\n".join(crontab_lines) + "\n")
     f.close()

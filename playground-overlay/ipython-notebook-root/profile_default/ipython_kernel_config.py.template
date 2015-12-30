@@ -1,8 +1,7 @@
 c = get_config()
 c.IPKernelApp.exec_lines = [
   "from mcpi import minecraft",
-  "def my_connect(): return minecraft.Minecraft.create(port=${raspberry_juice_sponge_plugin_port})",
-  "def connect(): return minecraft.Minecraft.create(port=25566)",
+  "def connect(): return minecraft.Minecraft.create(port=${raspberry_juice_sponge_plugin_port})",
   "from mcgamedata import block, living",
   "from oogway.turtle import *",
   "init(connect, player='${initial_minecraft_player_name_for_oogway}')",

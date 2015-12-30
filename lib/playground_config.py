@@ -31,6 +31,8 @@ DEFAULT_CONFIG.minecraft_player_idle_timeout = 1440 # 1 day
 DEFAULT_CONFIG.minecraft_announce_player_achievements = False # annoying
 DEFAULT_CONFIG.minecraft_whitelist = True
 DEFAULT_CONFIG.minecraft_whitelist_json = "[]"
+DEFAULT_CONFIG.minecraft_server_port = False
+DEFAULT_CONFIG.ipython_notebook_server_http_port = False
 
 def load_playground_config(playground_name, config_path):
     return load_config(playground_name, PlaygroundConfig, DEFAULT_CONFIG, 'playground_name', config_path)
