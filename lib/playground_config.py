@@ -11,6 +11,7 @@ class PlaygroundConfig(BaseSettingsClass):
         self.minecraft_announce_player_achievements = None
         self.minecraft_whitelist = None
         self.minecraft_whitelist_json = None
+        self.minecraft_startup_commands = None
         self.raspberry_juice_sponge_plugin_port = None
         self.ipython_notebook_server_http_port = None
         self.web_password = None
@@ -31,6 +32,7 @@ DEFAULT_CONFIG.minecraft_player_idle_timeout = 1440 # 1 day
 DEFAULT_CONFIG.minecraft_announce_player_achievements = False # annoying
 DEFAULT_CONFIG.minecraft_whitelist = True
 DEFAULT_CONFIG.minecraft_whitelist_json = "[]"
+DEFAULT_CONFIG.minecraft_startup_commands = []
 DEFAULT_CONFIG.minecraft_server_port = False
 DEFAULT_CONFIG.ipython_notebook_server_http_port = False
 
