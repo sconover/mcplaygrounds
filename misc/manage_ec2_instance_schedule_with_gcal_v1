@@ -1,11 +1,16 @@
 #!/usr/bin/python
 
-# This script will start or stop an ec2 instance based on an ical url, such as one
+# This script will start or stop an ec2 instance that backs an elastic ip address, based on an ical url, such as one
 # based on a public google calendar.
 #
-# By default, the server is up (i.e., nothing is scheduled on the calendar)
-# Events on the calendar are treated as defining downtime. You may want to reinforce this
-# by naming the event something like "Server off".
+# By default, the server is down (i.e., nothing is scheduled on the calendar)
+# Events on the calendar are treated as defining uptime. You may want to reinforce this
+# by naming the event something like "Server on".
+#
+# If the gcal event description is an instance type (e.g. m4.large), and the current instance type
+# differs from this, the script will initiate a shutdown of the instance, will modify its instance type,
+# and start the instance. This way you can have the instance size be beefy during period when there's
+# a lot of usage, and small (but still "on") in periods where there's less usage.
 #
 # requirement: install awscli (sudo apt-get install awscli) and configure it (aws configure)
 # manage online schedule of a server in ec2
@@ -14,13 +19,14 @@
 # (i.e. you could manage many servers with the t2.micro)
 #
 # run this in tmux:
-# while :; do ./manage_ec2_instance_schedule_with_gcal_v1 https://www.google.com/calendar/ical/some-gcal-url/public/basic.ics i-5aed822c us-west-2; sleep 15; done
+# while :; do ./manage_ec2_instance_schedule_with_gcal_v1 https://www.google.com/calendar/ical/some-gcal-url/public/basic.ics some-elastic-ip us-west-2; sleep 15; done
 #
 # This way, you can make changes to server up/down status by simply making changes to the schedule on the calendar.
 
 
 # https://nylas.com/blog/rrules/
 
+import os
 import sys
 import subprocess
 import time
@@ -29,19 +35,29 @@ import datetime
 import dateutil
 import pytz
 
+VALID_INSTANCE_TYPES = ["t2.nano", "t2.micro", "t2.small", "t2.medium", "t2.large",
+    "m4.large", "m4.xlarge", "m4.2xlarge",
+    "c4.large", "c4.xlarge", "c4.2xlarge"]
+
 ical_url = sys.argv[1]
-ec2_instance_id = sys.argv[2]
+elastic_ip = sys.argv[2]
 ec2_region = sys.argv[3]
 
+elastic_ip_query = ["aws", "ec2", "describe-addresses", "--filters", "Name=public-ip,Values=" + elastic_ip, "--output", "text"]
+ec2_instance_id = subprocess.check_output(elastic_ip_query).strip().split("\t")[4]
 
-ical_content = subprocess.check_output(["/usr/bin/curl", "-s", ical_url]).strip()
+print "ec2 instance id = " + ec2_instance_id
+
+ical_content = subprocess.check_output(["/usr/bin/curl", "-Ls", ical_url]).strip()
+#print ical_content
 cal = icalendar.Calendar.from_ical(ical_content)
 #print cal.to_ical()
 this_tz=pytz.timezone('US/Pacific')
 now = datetime.datetime.now(this_tz).replace(tzinfo=None)
 
 print "=== start evaluation ==="
-in_busy_period = False
+in_running_period = False
+description = None
 print "  now=" + str(now)
 for component in cal.walk():
     if component.name == "VEVENT":
@@ -70,7 +86,8 @@ for component in cal.walk():
             overlaps_now = recent_from_dt <= now <= recent_to_dt
             print "    overlaps_now=" + str(overlaps_now)
             if overlaps_now:
-                in_busy_period = True
+                in_running_period = True
+                description = component.get('DESCRIPTION').strip()
         else:
            print "  " + component.get('summary')
            start = component['DTSTART'].dt.astimezone(this_tz).replace(tzinfo=None)
@@ -80,15 +97,39 @@ for component in cal.walk():
            overlaps_now = start <= now <= end
            print "    overlaps_now=" + str(overlaps_now)
            if overlaps_now:
-                in_busy_period = True
-print "=== end evaluation. in_busy_period=" + str(in_busy_period) + " ==="
-if in_busy_period:
-    cmd_parts = ["aws", "ec2", "stop-instances", "--instance-ids", ec2_instance_id, "--region", ec2_region, "--output", "text"]
-    print "As of " + str(now) + " detected busy on calendar, stopping instance:"
-    print " ".join(cmd_parts)
-    subprocess.call(cmd_parts)
-else:
+                in_running_period = True
+                description = component.get('DESCRIPTION').strip()
+print "=== end evaluation. in_running_period=" + str(in_running_period) + " ==="
+
+def start_instance():
     cmd_parts = ["aws", "ec2", "start-instances", "--instance-ids", ec2_instance_id, "--region", ec2_region, "--output", "text"]
-    print "As of " + str(now) + " deteacted non-busy on calendar, starting instance:"
     print " ".join(cmd_parts)
     subprocess.call(cmd_parts)
+
+def stop_instance():
+    cmd_parts = ["aws", "ec2", "stop-instances", "--instance-ids", ec2_instance_id, "--region", ec2_region, "--output", "text"]
+    print " ".join(cmd_parts)
+    subprocess.call(cmd_parts)
+
+def modify_instance_type(instance_type):
+    cmd_parts = ["aws", "ec2", "modify-instance-attribute", "--instance-id", ec2_instance_id, "--instance-type", description]
+    print " ".join(cmd_parts)
+    subprocess.call(cmd_parts)
+
+if in_running_period:
+    if description in VALID_INSTANCE_TYPES:
+        desired_instance_type = description
+        print "description is a valid instance type - desired instance type is: " + desired_instance_type
+        current_instance_type = os.popen("/usr/bin/aws ec2 describe-instances --instance-ids " + ec2_instance_id + " --output text | /bin/grep INSTANCES | /usr/bin/awk '{print $9}'").read().strip()
+        print "current instance type: " + current_instance_type
+        if current_instance_type != desired_instance_type:
+            print "Attempting to stop the instance because a different instance type is desired:"
+            stop_instance()
+        print "Attempting to modify the instance type:"
+        modify_instance_type(desired_instance_type)
+    print "As of " + str(now) + " detected running period on calendar, starting instance:"
+    start_instance()
+else:
+    print "As of " + str(now) + " detected non-running on calendar, stopping instance:"
+    stop_instance()
+

@@ -43,7 +43,7 @@ def bootstrap(args):
         "echo \"deb http://packages.mapcrafter.org/debian $(lsb_release -sc) main\" | sudo tee /etc/apt/sources.list.d/mapcrafter.list",
         "sudo wget -O /etc/apt/trusted.gpg.d/mapcrafter.gpg http://packages.mapcrafter.org/debian/keyring.gpg",
         "sudo apt-get update",
-        "sudo apt-get install apache2-utils build-essential dstat git gradle htop maven nginx nodejs-legacy npm openjdk-7-jdk python-pip python-dev tmux -y",
+        "sudo apt-get install apache2-utils build-essential dstat git gradle htop maven nginx nodejs-legacy npm openjdk-7-jdk python-pip python-dev sysstat tmux -y",
         "sudo pip install virtualenv virtualenvwrapper"
     ])
     ssh_exec("file RaspberryJuiceSpongePlugin/.git || git clone {} --recursive".format(config.raspberry_juice_sponge_plugin_git_repo))
