@@ -3,9 +3,12 @@
 import sys
 import argparse
 import os.path
+import os
+import stat
 import shutil
 import json
 import time
+import fileinput
 from string import Template
 
 from lib import const
@@ -34,6 +37,80 @@ def copy_minecraft_server_files(playground_name):
     ssh_exec("file {}/minecraft-server || (mkdir {}/minecraft-server && cp -R {}/. {}/minecraft-server/)".format(
         pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
 
+def create_game_commands(playground_config, nginx_conf_file, index_html_file):
+    # TODO?: pull gamemode/spectator changes into here
+
+    if not playground_config.minecraft_server_port:
+        return
+
+    all_game_bin_script_file_names = []
+
+    game_bin_dir = OVERLAY_STAGING_DIR + "/game-bin"
+    os.makedirs(game_bin_dir)
+
+    all_config = get_all_playground_config()
+    for playground_name in all_config:
+        c = all_config[playground_name]
+
+        if c.teleport_destinations is not None \
+        and len(c.teleport_destinations) > 0 \
+        and playground_config.playground_name in c.teleport_destinations:
+            for destination_label in c.teleport_destinations[playground_config.playground_name]:
+                destination_coordinates = c.teleport_destinations[playground_config.playground_name][destination_label]
+                mc_playground_name = playground_config.playground_name
+                player_name = c.initial_minecraft_player_name_for_oogway
+                x = destination_coordinates["x"]
+                y = destination_coordinates["y"]
+                z = destination_coordinates["z"]
+                teleport_bash = "\n".join([
+                    "#!/bin/bash -ex",
+                    "",
+                    "tmux send -t {mc_playground_name}-mc \"tp {player_name} {x} 100 {z}\" ENTER",
+                    "tmux send -t {mc_playground_name}-mc \"spawnpoint {player_name} {x} 100 {z}\" ENTER",
+                    "echo \"teleported {player_name} to {x} 100 {z} in minecraft server {mc_playground_name}-mc\""
+                    ""
+                    ]).format(**locals())
+                file_name = "teleport_" + player_name + "_to_" + destination_label
+                path = game_bin_dir + "/" + file_name
+                f = open(path, 'w')
+                f.write(teleport_bash)
+                f.close()
+                st = os.stat(path)
+                os.chmod(path, st.st_mode | stat.S_IEXEC)
+                all_game_bin_script_file_names.append(file_name)
+
+    url_paths = []
+
+    nginx_location_directives = ""
+    for game_bin_script_file_name in all_game_bin_script_file_names:
+        url_path = "/" + playground_config.playground_name + "/" + game_bin_script_file_name
+        url_paths.append(url_path)
+        location_directive = "\n".join([
+            "",
+            "  location " + url_path + " {",
+            "    content_by_lua 'os.execute(\"sudo -u ubuntu /home/ubuntu/playgrounds/" +
+                playground_config.playground_name +
+                "/game-bin/" + game_bin_script_file_name + "\");return ngx.redirect(\"/" +
+                playground_config.playground_name + "#game-bin\")';",
+            "  }",
+            ""
+        ])
+        nginx_location_directives += location_directive
+
+    nginx_content = open(nginx_conf_file).read()
+    nginx_content = nginx_content.replace("# GAME_BIN_PATHS_GO_HERE", nginx_location_directives)
+    f = open(nginx_conf_file, 'w')
+    f.write(nginx_content)
+    f.close()
+
+    game_bin_items = map(lambda u: "<li><a href=\"" + u + "\">" + u + "</a></li>", url_paths)
+    index_html_content = open(index_html_file).read()
+    index_html_content = index_html_content.replace("<!-- GAME_BIN_PATHS_GO_HERE -->", "<ul>\n" + "\n".join(game_bin_items) + "\n</ul>")
+    f = open(index_html_file, 'w')
+    f.write(index_html_content)
+    f.close()
+
+
 def stage_overlay_files(playground_config):
     shutil.rmtree(OVERLAY_STAGING_DIR, ignore_errors=True)
     shutil.copytree("playground-overlay", OVERLAY_STAGING_DIR)
@@ -49,6 +126,8 @@ def stage_overlay_files(playground_config):
                 f.write(new_file_content)
                 f.close()
                 os.remove(path)
+
+    create_game_commands(playground_config, OVERLAY_STAGING_DIR + "/nginx.conf", OVERLAY_STAGING_DIR + "/webroot/index.html")
 
 def convert_markdown_to_ipython_notebook(markdown_file):
     this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -425,6 +504,9 @@ def at_reboot_tmux_crontab_line(playground_name, subdir, tmux_session_suffix, co
                 playground_name + "-" + tmux_session_suffix,
                 command)
 
+def tmux_send_command(playground_name, command):
+    return "tmux send -t " + playground_name + "-mc \"" + command + "\" ENTER"
+
 def write_crontab(args):
     crontab_lines = []
     crontab_lines.append("@reboot /usr/bin/tmux new-session -s dstat -d '/usr/bin/dstat --time --load --mem --net  --io --swap --page --sys'")
@@ -435,7 +517,7 @@ def write_crontab(args):
             crontab_lines.append(
                 at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -Xmx3g -Xms3g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -Xmn512m -XX:ParallelGCThreads=4 -jar sponge-minecraft-server.jar run"))
             if all_config[playground_name].minecraft_startup_commands and len(all_config[playground_name].minecraft_startup_commands) > 0:
-                minecraft_console_commands = " && ".join(map(lambda c: "tmux send -t " + playground_name + "-mc \"" + c + "\" ENTER", all_config[playground_name].minecraft_startup_commands))
+                minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_name, c), all_config[playground_name].minecraft_startup_commands))
                 crontab_lines.append(
                     at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc-init", "while ! nc -q 1 localhost " + str(all_config[playground_name].minecraft_server_port) + " </dev/null; do sleep 1; echo waiting; done && echo started && " + minecraft_console_commands))
         if all_config[playground_name].ipython_notebook_server_http_port:
@@ -454,18 +536,54 @@ def write_mapcrafter_conf(args):
     lines.append("")
     all_config = get_all_playground_config()
     for playground_name in all_config:
-        lines.append("[world:{}_world]".format(playground_name))
-        lines.append("input_dir = /home/ubuntu/playgrounds/{}/minecraft-server/world".format(playground_name))
-        lines.append("")
-        lines.append("[map:map_{}_world]".format(playground_name))
-        lines.append("name = {} world".format(playground_name))
-        lines.append("world = {}_world".format(playground_name))
-        lines.append("")
+        if all_config[playground_name].minecraft_server_port:
+            lines.append("[world:{}_world]".format(playground_name))
+            lines.append("input_dir = /home/ubuntu/playgrounds/{}/minecraft-server/world".format(playground_name))
+            lines.append("")
+            lines.append("[map:map_{}_world]".format(playground_name))
+            lines.append("name = {} world".format(playground_name))
+            lines.append("world = {}_world".format(playground_name))
+            lines.append("")
     f = open("/tmp/mapcrafter.conf", 'w')
     f.write("\n".join(lines) + "\n")
     f.close()
     scp_r("/tmp/mapcrafter.conf", "mapcrafter.conf")
 add_simple_subparser(write_mapcrafter_conf)
+
+def teleport_to(mc_playground_config, player_playground_config, x, z):
+    teleport_command = "tp {} {} 100 {}".format(player_playground_config.initial_minecraft_player_name_for_oogway, x, z)
+    spawnpoint_command = "spawnpoint {} {} 100 {}".format(player_playground_config.initial_minecraft_player_name_for_oogway, x, z)
+    ssh_exec_all([
+        tmux_send_command(mc_playground_config.playground_name, teleport_command),
+        tmux_send_command(mc_playground_config.playground_name, spawnpoint_command)
+    ])
+
+def teleport_to_personal_1(args):
+    player_playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    mc_playground_config = load_playground_config(args.minecraft_playground, args.playground_config_file)
+    teleport_to(mc_playground_config, player_playground_config, player_playground_config.personal_x_1, player_playground_config.personal_z_1)
+teleport_to_personal_parser = subparsers.add_parser("teleport-to-personal-1", help='{} teleport-to-personal-1')
+teleport_to_personal_parser.add_argument('minecraft_playground', help='the minecraft instance')
+teleport_to_personal_parser.add_argument('playground_config_file', help='json config for playgrounds')
+teleport_to_personal_parser.set_defaults(func=teleport_to_personal_1)
+
+def teleport_to_personal_2(args):
+    player_playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    mc_playground_config = load_playground_config(args.minecraft_playground, args.playground_config_file)
+    teleport_to(playground_config, playground_config.personal_x_2, playground_config.personal_z_2)
+teleport_to_personal_parser = subparsers.add_parser("teleport-to-personal-2", help='{} teleport-to-personal-2')
+teleport_to_personal_parser.add_argument('minecraft_playground', help='the minecraft instance')
+teleport_to_personal_parser.add_argument('playground_config_file', help='json config for playgrounds')
+teleport_to_personal_parser.set_defaults(func=teleport_to_personal_2)
+
+def teleport_to_center(args):
+    player_playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    mc_playground_config = load_playground_config(args.minecraft_playground, args.playground_config_file)
+    teleport_to(mc_playground_config, player_playground_config, 0, 0)
+teleport_to_center_parser = subparsers.add_parser("teleport-to-center", help='{} teleport-to-center')
+teleport_to_center_parser.add_argument('minecraft_playground', help='the minecraft instance')
+teleport_to_center_parser.add_argument('playground_config_file', help='json config for playgrounds')
+teleport_to_center_parser.set_defaults(func=teleport_to_center)
 
 args = parser.parse_args()
 args.func(args)

@@ -22,6 +22,11 @@ class PlaygroundConfig(BaseSettingsClass):
         self.usb_stick_howto_url = None
         self.usb_stick_dir = None
         self.minecraft_reference_launcher_profile_json_file = None
+        self.personal_x_1 = None
+        self.personal_z_1 = None
+        self.personal_x_2 = None
+        self.personal_z_2 = None
+        self.teleport_destinations = None
         self._freeze() # no more attribute definitions are allowed
 
 DEFAULT_CONFIG = PlaygroundConfig()
@@ -33,6 +38,7 @@ DEFAULT_CONFIG.minecraft_announce_player_achievements = False # annoying
 DEFAULT_CONFIG.minecraft_whitelist = True
 DEFAULT_CONFIG.minecraft_whitelist_json = "[]"
 DEFAULT_CONFIG.minecraft_startup_commands = []
+DEFAULT_CONFIG.teleport_destinations = {}
 DEFAULT_CONFIG.minecraft_server_port = False
 DEFAULT_CONFIG.ipython_notebook_server_http_port = False
 

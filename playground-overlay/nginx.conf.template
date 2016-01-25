@@ -29,5 +29,7 @@ location /${playground_name}/ {
   location /${playground_name}/doc.html {
     alias /home/ubuntu/playgrounds/${playground_name}/ipython-notebook-root/data/share/doc.html;
   }
+
+  # GAME_BIN_PATHS_GO_HERE
 }
 

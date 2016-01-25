@@ -35,4 +35,8 @@ How to get to ${playground_name}'s Minecraft world using your own Minecraft soft
   <li>Click "Join Server"</li>
 </ol>
 
+<a name="game-bin"></a>
+
+<!-- GAME_BIN_PATHS_GO_HERE -->
+
 </html>
