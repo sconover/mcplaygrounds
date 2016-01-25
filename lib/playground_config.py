@@ -40,6 +40,10 @@ DEFAULT_CONFIG.minecraft_whitelist_json = "[]"
 DEFAULT_CONFIG.minecraft_startup_commands = []
 DEFAULT_CONFIG.teleport_destinations = {}
 DEFAULT_CONFIG.minecraft_server_port = False
+DEFAULT_CONFIG.personal_x_1 = 0
+DEFAULT_CONFIG.personal_z_1 = 0
+DEFAULT_CONFIG.personal_x_2 = 0
+DEFAULT_CONFIG.personal_z_2 = 0
 DEFAULT_CONFIG.ipython_notebook_server_http_port = False
 
 def load_playground_config(playground_name, config_path):
