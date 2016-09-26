@@ -27,6 +27,7 @@ class PlaygroundConfig(BaseSettingsClass):
         self.personal_x_2 = None
         self.personal_z_2 = None
         self.teleport_destinations = None
+        self.is_all_notebook = None
         self._freeze() # no more attribute definitions are allowed
 
 DEFAULT_CONFIG = PlaygroundConfig()
@@ -45,6 +46,7 @@ DEFAULT_CONFIG.personal_z_1 = 0
 DEFAULT_CONFIG.personal_x_2 = 0
 DEFAULT_CONFIG.personal_z_2 = 0
 DEFAULT_CONFIG.ipython_notebook_server_http_port = False
+DEFAULT_CONFIG.is_all_notebook = False
 
 def load_playground_config(playground_name, config_path):
     return load_config(playground_name, PlaygroundConfig, DEFAULT_CONFIG, 'playground_name', config_path)

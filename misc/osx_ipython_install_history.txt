@@ -1,0 +1,7 @@
+  515  2016-03-27 07:59:07 pip install virtualenv virtualenvwrapper
+  516  2016-03-27 08:00:11 virtualenv --no-site-packages .ipython3x-virtualenv
+  518  2016-03-27 08:00:50 .ipython3x-virtualenv/bin/pip install invoke jinja2 jsonschema pyzmq pygments tornado
+  519  2016-03-27 08:01:43 npm install less bower
+  536  2016-03-27 08:46:13 git submodule update --init --recursive
+  537  2016-03-27 08:46:34 .ipython3x-virtualenv/bin/python setup.py install
+  539  2016-03-27 08:48:50 .ipython3x-virtualenv/bin/ipython notebook
