@@ -59,6 +59,7 @@
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
@@ -89,7 +90,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Util\BasicAuthPopulator.cs" />
+    <Compile Include="Util\BrowserBasicAuthPopulator.cs" />
+    <Compile Include="Util\BrowserLifeSpanHandler.cs" />
     <Compile Include="Util\ConfigUtil.cs" />
     <Compile Include="Util\GlobalKeyHook.cs" />
     <Compile Include="Util\GlobalSettings.cs" />
@@ -126,9 +128,6 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <None Include="config-schema.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="minecraft-google.config.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -166,12 +165,11 @@
   <Import Project="..\packages\CefSharp.Wpf.53.0.0\build\CefSharp.Wpf.targets" Condition="Exists('..\packages\CefSharp.Wpf.53.0.0\build\CefSharp.Wpf.targets')" />
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties minecraft-google_1config_1json__JSONSchema="config-schema.json" notepad-google_1config_1json__JSONSchema="config-schema.json" config-schema_1json__JSONSchema="http://json-schema.org/draft-04/schema" />
+      <UserProperties notepad-google_1config_1json__JSONSchema="..\..\..\schemas\native-client-config-schema.json" minecraft-google_1config_1json__JSONSchema="..\..\..\schemas\native-client-config-schema.json" />
     </VisualStudio>
   </ProjectExtensions>
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>copy /y "$(ProjectDir)..\..\..\schema\native-client-config-schema.json" "$(ProjectDir)$(OutDir)"</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

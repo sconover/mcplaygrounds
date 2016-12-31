@@ -15,6 +15,7 @@ using Newtonsoft.Json.Schema;
 using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Diagnostics.Contracts;
+using Microsoft.VisualBasic;
 
 namespace mcprog2
 {
@@ -55,6 +56,7 @@ namespace mcprog2
             GlobalSettings.loadFromJsonConfig(this.config);
 
             Browser.WebBrowser.RequestHandler = ConfigUtil.loadBasicAuthPopulatorFromBootstrapJson();
+            Browser.WebBrowser.LifeSpanHandler = new BrowserLifeSpanHandler();
             Browser.Load((string)config["browser_window"]["url"]);
             extractNativeJars();
 
@@ -108,6 +110,15 @@ namespace mcprog2
             restart.IsEnabled = dockedWindowAndSubProcess.subProcess != null;
             restart.Click += (innerSender, args) => { if (stopHostedApp()) startAndDockHostedApp(); };
             menu.Items.Add(restart);
+
+            MenuItem browseToUrl = new MenuItem();
+            browseToUrl.Header = "Browse To URL...";
+            browseToUrl.Click += (innerSender, args) => {
+                string currentUrl = Browser.WebBrowser.Address.ToString();
+                string newUrl = Interaction.InputBox("Browse To URL...", "URL", currentUrl, 0, 0);
+                Browser.WebBrowser.Load(newUrl);
+            };
+            menu.Items.Add(browseToUrl);
 
             return menu;
         }

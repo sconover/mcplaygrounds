@@ -249,7 +249,7 @@ namespace mcprog2.Util
             //For some reason, multiplying the H and W by 1.5 seems to actually fill the window.
             //TODO: make this configurable in case it's wrong
             logFrameworkElement(matchingElement, "RESIZE-containing-border-before-resize");
-            MoveWindow(dockedWindowHandle, margin, margin, (int)(matchingElement.ActualWidth * 1.5 - margin * 1.5), (int)(matchingElement.ActualHeight * 1.5 - margin * 1.5), true);
+            MoveWindow(dockedWindowHandle, margin, margin, (int)(matchingElement.ActualWidth - margin), (int)(matchingElement.ActualHeight - margin), true);
             logWindowRectFromHandle(wrapper, dockedWindowHandle, "RESIZE-docked-after-resize");
         }
 

@@ -30,7 +30,7 @@ namespace mcprog2.Util
         
         private static JsonSchema loadConfigJsonSchema()
         {
-            string content = File.ReadAllText(filePathRelativeToProcess("config-schema.json"));
+            string content = File.ReadAllText(filePathRelativeToProcess("native-client-config-schema.json"));
             return JsonSchema.Parse(content);
         }
 
@@ -51,10 +51,10 @@ namespace mcprog2.Util
                 bootstrap.BasicAuthPassword);
         }
 
-        public static BasicAuthPopulator loadBasicAuthPopulatorFromBootstrapJson()
+        public static BrowserBasicAuthPopulator loadBasicAuthPopulatorFromBootstrapJson()
         {
             BootstrapConfig bootstrap = loadBootstrapConfig();
-            return new BasicAuthPopulator(bootstrap.ConfigUri.Host, bootstrap.BasicAuthUsername, bootstrap.BasicAuthPassword);
+            return new BrowserBasicAuthPopulator(bootstrap.ConfigUri.Host, bootstrap.BasicAuthUsername, bootstrap.BasicAuthPassword);
         }
 
         private struct BootstrapConfig

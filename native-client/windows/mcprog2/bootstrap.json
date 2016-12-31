@@ -1,5 +1,5 @@
 ﻿{
-  "uri": "http://127.0.0.1:8080/mcprog2/notepad-google.config.json",
+  "uri": "http://a.giantpurplekitty.com/foo/notepad-windows.client-config.json",
   "basic_auth_username": "foo",
-  "basic_auth_password": "bar"
+  "basic_auth_password": "foofoo"
 }

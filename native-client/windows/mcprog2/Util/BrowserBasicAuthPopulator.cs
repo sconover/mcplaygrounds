@@ -7,13 +7,13 @@ using CefSharp;
 
 namespace mcprog2.Util
 {
-    class BasicAuthPopulator : IRequestHandler
+    class BrowserBasicAuthPopulator : IRequestHandler
     {
         private string targetHost;
         private string basicAuthUsername;
         private string basicAuthPassword;
 
-        public BasicAuthPopulator(string targetHost, string basicAuthUsername, string basicAuthPassword)
+        public BrowserBasicAuthPopulator(string targetHost, string basicAuthUsername, string basicAuthPassword)
         {
             this.targetHost = targetHost;
             this.basicAuthUsername = basicAuthUsername;
