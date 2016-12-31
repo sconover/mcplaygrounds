@@ -1,0 +1,103 @@
+﻿{
+  "definitions": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+
+  "title": "mcprog config schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "hosted_app_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/nonEmptyString",
+          "required": true
+        },
+        "process_info": {
+          "type": "object",
+          "required": true,
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "file_name": {
+                  "$ref": "#/definitions/nonEmptyString",
+                  "required": true
+                },
+                "arguments": {
+                  "$ref": "#/definitions/nonEmptyString",
+                  "required": true
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "native_jars": {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/nonEmptyString" }
+                },
+                "java_executable_path": {
+                  "$ref": "#/definitions/nonEmptyString",
+                  "required": true
+                },
+                "java_x_options": {
+                  "type": "array",
+                  "required": true,
+                  "items": { "$ref": "#/definitions/nonEmptyString" }
+                },
+                "java_system_properties": {
+                  "type": "array",
+                  "required": true,
+                  "items": { "$ref": "#/definitions/nonEmptyString" }
+                },
+                "java_classpath_components": {
+                  "type": "array",
+                  "required": true,
+                  "items": { "$ref": "#/definitions/nonEmptyString" }
+                },
+                "java_main_class": {
+                  "$ref": "#/definitions/nonEmptyString",
+                  "required": true
+                },
+                "java_program_arguments": {
+                  "type": "array",
+                  "required": true,
+                  "items": { "$ref": "#/definitions/nonEmptyString" }
+                }
+              }
+            }
+          ]
+        },
+        "variables": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "static": { "type": "object" },
+            "load_selected_minecraft_profile_from_launcher_profiles_json": {
+              "$ref": "#/definitions/nonEmptyString"
+            }
+          }
+        },
+        "wait_for_window_title_starts_with": {
+          "$ref": "#/definitions/nonEmptyString",
+          "required": true
+        },
+      }
+    },
+    "browser_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": { "$ref": "#/definitions/nonEmptyString", "required": true }
+      }
+    }
+  }
+}
