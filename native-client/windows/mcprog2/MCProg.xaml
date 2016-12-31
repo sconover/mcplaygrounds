@@ -19,9 +19,9 @@
         </Grid.ColumnDefinitions>
 
         <!-- https://social.msdn.microsoft.com/Forums/vstudio/en-US/ef56fc79-e3cf-4585-b246-9922338167ab/binding-to-a-grid-column-width-and-row-height?forum=wpf -->
-        <Border x:Name="HostedAppWindow" Grid.Column="0" Margin="0,0,0,0" Loaded="HostedAppWindow_Loaded" BorderThickness="2" BorderBrush="Green"/>
+        <Border x:Name="HostedAppWindow" Grid.Column="0" Margin="0,0,0,0" Loaded="HostedAppWindow_Loaded" BorderThickness="4" BorderBrush="Green"/>
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
-        <Border Grid.Column="2" x:Name="browserBorder" Margin="0,0,0,0" BorderThickness="2" BorderBrush="Blue"/>
+        <Border Grid.Column="2" x:Name="browserBorder" Margin="0,0,0,0" BorderThickness="4" BorderBrush="Blue"/>
         <cefSharp:ChromiumWebBrowser x:Name="Browser" 
                                      Grid.Column="2" 
                                      Address="http://www.google.com"

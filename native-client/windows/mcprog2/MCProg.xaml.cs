@@ -223,7 +223,8 @@ namespace mcprog2
 
         private void killHostedApp()
         {
-            if (dockedWindowAndSubProcess.subProcess != null)
+            if (dockedWindowAndSubProcess.subProcess != null && 
+                !dockedWindowAndSubProcess.subProcess.HasExited)
             {
                 log("killing hosted app");
                 dockedWindowAndSubProcess.subProcess.Kill();
