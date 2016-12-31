@@ -1,3 +1,6 @@
+client requirements...jsonschema
+
+
 Cheat sheet:
   /home/ubuntu/.python-virtualenv/local/lib/python2.7/site-packages/IPython/html/templates/notebook.html
   <div id="notebook"><div class="container"><pre>HELLO</pre></div></div>

@@ -1,0 +1,13 @@
+{
+  "hosted_app_window": {
+    "name": "Notepad",
+    "process_info": {
+      "file_name": "notepad.exe",
+      "arguments": "c:\\temp\\foo.txt"
+    },
+    "wait_for_window_title_starts_with": "foo "
+  },
+  "browser_window": {
+    "url": "http://${fully_qualified_domain_name}/${playground_name}/python"
+  }
+}
