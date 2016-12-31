@@ -39,6 +39,8 @@ namespace mcprog2
         
         private void HostedAppWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            this.Title = "Launching, Please Wait...";
+
             GlobalSettings.loadFromSystemEnvironment();
 
             f12ToggleKeyHook = new GlobalKeyHook(System.Windows.Forms.Keys.F12, toggleFocus);
@@ -57,11 +59,18 @@ namespace mcprog2
 
             Browser.WebBrowser.RequestHandler = ConfigUtil.loadBasicAuthPopulatorFromBootstrapJson();
             Browser.WebBrowser.LifeSpanHandler = new BrowserLifeSpanHandler();
-            Browser.Load((string)config["browser_window"]["url"]);
+            Browser.WebBrowser.Load((string)config["browser_window"]["url"]);
+
             extractNativeJars();
 
             startAndDockHostedApp();
             focusOnHostedAppWindow();
+            updateWindowTitle();
+        }
+
+        private void updateWindowTitle()
+        {
+            this.Title = hostedAppName() + " | " + (string)config["browser_window"]["url"];
         }
 
         private void HostedAppWindow_Resize(object sender, EventArgs e)
@@ -117,6 +126,7 @@ namespace mcprog2
                 string currentUrl = Browser.WebBrowser.Address.ToString();
                 string newUrl = Interaction.InputBox("Browse To URL...", "URL", currentUrl, 0, 0);
                 Browser.WebBrowser.Load(newUrl);
+                updateWindowTitle();
             };
             menu.Items.Add(browseToUrl);
 
