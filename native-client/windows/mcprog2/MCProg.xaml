@@ -24,7 +24,6 @@
         <Border Grid.Column="2" x:Name="browserBorder" Margin="0,0,0,0" BorderThickness="2" BorderBrush="Blue"/>
         <cefSharp:ChromiumWebBrowser x:Name="Browser" 
                                      Grid.Column="2" 
-                                     Address="http://www.google.com"
                                      Margin="2,2,2,2"
                                      Width="{Binding ElementName=browserBorder,Path=ActualWidth}"
                                      Height="{Binding ElementName=browserBorder,Path=ActualHeight}"/>

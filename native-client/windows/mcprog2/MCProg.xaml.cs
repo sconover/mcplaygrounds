@@ -59,7 +59,8 @@ namespace mcprog2
 
             Browser.WebBrowser.RequestHandler = ConfigUtil.loadBasicAuthPopulatorFromBootstrapJson();
             Browser.WebBrowser.LifeSpanHandler = new BrowserLifeSpanHandler();
-            Browser.WebBrowser.Load((string)config["browser_window"]["url"]);
+            Browser.Load((string)config["browser_window"]["url"]); 
+            // do not use Browser.WebBrowser.Load ... things do not load properly when using buildt exe's
 
             extractNativeJars();
 
@@ -125,7 +126,7 @@ namespace mcprog2
             browseToUrl.Click += (innerSender, args) => {
                 string currentUrl = Browser.WebBrowser.Address.ToString();
                 string newUrl = Interaction.InputBox("Browse To URL...", "URL", currentUrl, 0, 0);
-                Browser.WebBrowser.Load(newUrl);
+                Browser.Load(newUrl);
                 updateWindowTitle();
             };
             menu.Items.Add(browseToUrl);
