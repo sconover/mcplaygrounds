@@ -75,64 +75,63 @@ def all_accessible_teleport_actions(playground_config):
                 actions.append(TeleportAction(mc_server_playground_name, player_name, destination_label, x, y, z))
     return actions
 
+def bash_fragment_teleport(teleport_action):
+    server_playground_name = teleport_action.server_playground_name
+    player_name = teleport_action.player_name
+    destination_label = teleport_action.destination_label
+    x = teleport_action.x
+    y = teleport_action.y
+    z = teleport_action.z
+    return "\n".join([
+        "",
+        "tmux send -t {server_playground_name}-mc \"tp {player_name} {x} {y} {z}\" ENTER",
+        "tmux send -t {server_playground_name}-mc \"spawnpoint {player_name} {x} {y} {z}\" ENTER",
+        "echo \"teleported {player_name} to {destination_label}=({x},{y},{z}) in minecraft server {server_playground_name}-mc\"",
+        ""
+    ]).format(**locals())
+
 def create_game_commands(playground_config, nginx_conf_file, index_html_file):
     # TODO?: pull gamemode/spectator changes into here
 
     if not playground_config.minecraft_server_port:
         return
 
-    all_game_bin_script_file_names = []
-
     game_bin_dir = OVERLAY_STAGING_DIR + "/game-bin"
     os.makedirs(game_bin_dir)
+    all_game_bin_script_file_names = []
 
-    for action in all_accessible_teleport_actions(playground_config):
-        server_playground_name = action.server_playground_name
-        player_name = action.player_name
-        destination_label = action.destination_label
-        x = action.x
-        y = action.y
-        z = action.z
-        teleport_bash = "\n".join([
+    destination_to_actions = {}
+    for teleport_action in all_accessible_teleport_actions(playground_config):
+        if teleport_action.destination_label not in destination_to_actions:
+            destination_to_actions[teleport_action.destination_label] = []
+        destination_to_actions[teleport_action.destination_label].append(teleport_action)
+
+    for destination in sorted(destination_to_actions.keys()):
+        if len(destination_to_actions[destination])==1:
+            continue
+
+        teleport_bash_lines = [
             "#!/bin/bash -ex",
-            "",
-            "tmux send -t {server_playground_name}-mc \"tp {player_name} {x} {y} {z}\" ENTER",
-            "tmux send -t {server_playground_name}-mc \"spawnpoint {player_name} {x} {y} {z}\" ENTER",
-            "echo \"teleported {player_name} to {destination_label}=({x},{y},{z}) in minecraft server {server_playground_name}-mc\""
             ""
-            ]).format(**locals())
-        file_name = "teleport__" + player_name + "__to__" + destination_label
+        ]
+        for teleport_action in destination_to_actions[destination]:
+            teleport_bash_lines.append(bash_fragment_teleport(teleport_action))
+        file_name = "group_teleport_to__" + destination + "__" + str(len(destination_to_actions[destination])) + "_players"
         path = game_bin_dir + "/" + file_name
-        write_executable_file(teleport_bash, path)
+        write_executable_file("\n".join(teleport_bash_lines), path)
         all_game_bin_script_file_names.append(file_name)
 
 
-    # all_config = get_all_playground_config()
-    # for playground_name in all_config:
-    #     c = all_config[playground_name]
-
-    #     if c.teleport_destinations is not None \
-    #     and len(c.teleport_destinations) > 0 \
-    #     and playground_config.playground_name in c.teleport_destinations:
-    #         for destination_label in c.teleport_destinations[playground_config.playground_name]:
-    #             destination_coordinates = c.teleport_destinations[playground_config.playground_name][destination_label]
-    #             mc_playground_name = playground_config.playground_name
-    #             player_name = c.initial_minecraft_player_name_for_oogway
-    #             x = destination_coordinates["x"]
-    #             y = destination_coordinates["y"]
-    #             z = destination_coordinates["z"]
-    #             teleport_bash = "\n".join([
-    #                 "#!/bin/bash -ex",
-    #                 "",
-    #                 "tmux send -t {mc_playground_name}-mc \"tp {player_name} {x} 100 {z}\" ENTER",
-    #                 "tmux send -t {mc_playground_name}-mc \"spawnpoint {player_name} {x} 100 {z}\" ENTER",
-    #                 "echo \"teleported {player_name} to {x} 100 {z} in minecraft server {mc_playground_name}-mc\""
-    #                 ""
-    #                 ]).format(**locals())
-    #             file_name = "teleport__" + player_name + "__to__" + destination_label
-    #             path = game_bin_dir + "/" + file_name
-    #             write_executable_file(teleport_bash, path)
-    #             all_game_bin_script_file_names.append(file_name)
+    for teleport_action in all_accessible_teleport_actions(playground_config):
+        teleport_bash = "\n".join([
+            "#!/bin/bash -ex",
+            "",
+            bash_fragment_teleport(teleport_action)
+        ])
+        file_name = "teleport__" + teleport_action.player_name + "__to__" + teleport_action.destination_label
+        path = game_bin_dir + "/" + file_name
+        write_executable_file(teleport_bash, path)
+        all_game_bin_script_file_names.append(file_name)
 
     url_paths = []
 
@@ -165,38 +164,6 @@ def create_game_commands(playground_config, nginx_conf_file, index_html_file):
     f.write(index_html_content)
     f.close()
 
-# def get_player_name_and_destination_from_filename(teleport_bin_path):
-#     parts=teleport_bin_path.split("__")
-#     player_name=parts[1]
-#     destination=parts[3]
-#     return (player_name, destination, teleport_bin_path)
-
-# def create_cross_playground_game_commands():
-#     playground_name_to_config = load_playground_name_to_config
-
-#     teleport_game_bin_files = ssh_get("find playgrounds/*/game-bin -type f -name 'teleport__*' | sort").strip().split("\n")
-#     player_name_and_destination_and_binfile = map(get_player_name_and_destination_from_filename, teleport_game_bin_files)
-#     destinations = {}
-#     for player_name, destination, teleport_bin_path in player_name_and_destination_and_binfile:
-#         if destination not in destinations:
-#             destinations[destination] = []
-#         destinations[destination].append((player_name, teleport_bin_path))
-
-#     for destination, player_teleport_infos in destinations:
-#         if (len(player_teleport_infos)==1):
-#             continue
-
-#         multi_teleport_bash_lines = [
-#             "#!/bin/bash -x", # note: there is NO -e...these commands execute on a best-effort basis
-#             ""
-#         ]
-#         for info in player_teleport_infos:
-#             player_name, teleport_bin_path = info
-#             multi_teleport_bash_lines.append(teleport_bin_path)
-#         multi_teleport_bash_lines.append("")
-#         file_name = "teleport__" + destination + "__" + len(player_teleport_infos)
-#         write_executable_file("\n".join(multi_teleport_bash_lines), CROSS_PLAYGROUND_OVERLAY_STAGING_DIR + "/teleport/" + file_name)
-
 def seed_staging_dir(staging_dir, overlay_dir, template_vars):
     shutil.rmtree(staging_dir, ignore_errors=True)
     shutil.copytree(overlay_dir, staging_dir)
@@ -214,9 +181,7 @@ def seed_staging_dir(staging_dir, overlay_dir, template_vars):
 
 def stage_overlay_files(playground_config):
     seed_staging_dir(OVERLAY_STAGING_DIR, "playground-overlay", playground_config.to_dict())
-
     playground_config.write_to_file("{}/playground.json".format(OVERLAY_STAGING_DIR))
-
     validate_files(OVERLAY_STAGING_DIR)
     create_game_commands(playground_config, OVERLAY_STAGING_DIR + "/nginx.conf", OVERLAY_STAGING_DIR + "/webroot/index.html")
 
@@ -257,6 +222,9 @@ def create_and_link_all_notebook_dir(playground_config):
     ssh_exec("ln -nsf /home/ubuntu/playgrounds/{}/ipython-notebook-root/data /home/ubuntu/ipython-all/{}".format(playground_config.playground_name, playground_config.playground_name))
     if playground_config.is_all_notebook:
         ssh_exec("ln -nsf /home/ubuntu/ipython-all /home/ubuntu/playgrounds/{}/ipython-notebook-root/data/all".format(playground_config.playground_name, playground_config.playground_name))
+
+def clean_remote_dirs(playground_name):
+    ssh_exec("rm -rf {}/game-bin".format(pdir(playground_name)))
 
 def upload_staged_files(playground_name):
     scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
@@ -301,6 +269,7 @@ def overlay(args):
     stage_generated_files(playground_config)
     create_and_link_shared_dir(playground_config)
     create_and_link_all_notebook_dir(playground_config)
+    clean_remote_dirs(args.playground_name)
     upload_staged_files(args.playground_name)
     reset_basic_auth_password(args.playground_name, playground_config.web_password)
     reload_nginx()
