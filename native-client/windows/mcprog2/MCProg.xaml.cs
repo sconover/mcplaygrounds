@@ -16,6 +16,7 @@ using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Diagnostics.Contracts;
 using Microsoft.VisualBasic;
+using System.Threading.Tasks;
 
 namespace mcprog2
 {
@@ -29,6 +30,7 @@ namespace mcprog2
         private GlobalKeyHook f12ToggleKeyHook;
         private bool focusToggle;
         private JObject config;
+        private string lastBrowserUrlFromConfig;
 
         public MainWindow()
         {
@@ -59,7 +61,8 @@ namespace mcprog2
 
             Browser.WebBrowser.RequestHandler = ConfigUtil.loadBasicAuthPopulatorFromBootstrapJson();
             Browser.WebBrowser.LifeSpanHandler = new BrowserLifeSpanHandler();
-            Browser.Load((string)config["browser_window"]["url"]); 
+            lastBrowserUrlFromConfig = (string)config["browser_window"]["url"];
+            Browser.Load(lastBrowserUrlFromConfig); 
             // do not use Browser.WebBrowser.Load ... things do not load properly when using buildt exe's
 
             extractNativeJars();
@@ -67,11 +70,35 @@ namespace mcprog2
             startAndDockHostedApp();
             focusOnHostedAppWindow();
             updateWindowTitle();
+
+            Task.Run(() => checkForNewBrowserUrlEverySeconds(10));
         }
 
         private void updateWindowTitle()
         {
             this.Title = hostedAppName() + " | " + (string)config["browser_window"]["url"];
+        }
+
+        private void checkForNewBrowserUrlEverySeconds(int secondsBetweenChecks)
+        {
+            while (true)
+            {
+                try
+                {
+                    string currentUrl = ConfigUtil.getLatestBrowserUrlFromConfig();
+                    if (currentUrl != lastBrowserUrlFromConfig)
+                    {
+                        log("detected new url from config, automatically loading in browser. new='" + currentUrl + "' old='" + lastBrowserUrlFromConfig + "'");
+                        Browser.Load(currentUrl);
+                        lastBrowserUrlFromConfig = currentUrl;
+                    }
+                } catch (Exception ex)
+                {
+                    log("while polling for new browser url, caught exception: " + ex.ToString());
+                }
+
+                Thread.Sleep(secondsBetweenChecks * 1000);
+            }
         }
 
         private void HostedAppWindow_Resize(object sender, EventArgs e)

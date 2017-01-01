@@ -14,6 +14,27 @@ namespace mcprog2.Util
 {
     class ConfigUtil
     {
+        public static string getLatestBrowserUrlFromConfig()
+        {
+            return (string)load()["browser_window"]["url"];
+        }
+
+        public static JObject load()
+        {
+            BootstrapConfig bootstrap = loadBootstrapConfig();
+
+            return loadConfig(
+                bootstrap.ConfigUri,
+                bootstrap.BasicAuthUsername,
+                bootstrap.BasicAuthPassword);
+        }
+
+        public static BrowserBasicAuthPopulator loadBasicAuthPopulatorFromBootstrapJson()
+        {
+            BootstrapConfig bootstrap = loadBootstrapConfig();
+            return new BrowserBasicAuthPopulator(bootstrap.ConfigUri.Host, bootstrap.BasicAuthUsername, bootstrap.BasicAuthPassword);
+        }
+
         private static JObject loadConfig(Uri uri, string username, string password)
         {
             WebClient client = new WebClient { Credentials = new NetworkCredential(username, password) };
@@ -39,22 +60,6 @@ namespace mcprog2.Util
             string path = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName) + "\\" + relativePath;
             Contract.Requires(File.Exists(path), "file not found: " + path);
             return path;
-        }
-
-        public static JObject load()
-        {
-            BootstrapConfig bootstrap = loadBootstrapConfig();
-         
-            return loadConfig(
-                bootstrap.ConfigUri, 
-                bootstrap.BasicAuthUsername, 
-                bootstrap.BasicAuthPassword);
-        }
-
-        public static BrowserBasicAuthPopulator loadBasicAuthPopulatorFromBootstrapJson()
-        {
-            BootstrapConfig bootstrap = loadBootstrapConfig();
-            return new BrowserBasicAuthPopulator(bootstrap.ConfigUri.Host, bootstrap.BasicAuthUsername, bootstrap.BasicAuthPassword);
         }
 
         private struct BootstrapConfig
