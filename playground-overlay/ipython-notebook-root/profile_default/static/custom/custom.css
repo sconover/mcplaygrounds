@@ -41,6 +41,10 @@
   visibility:hidden;
 }
 
+#save-notbook {
+  margin-left: 10px;
+}
+
 /* don't show any of the stuff after run_int (doesn't matter) */
 #run_int ~ * {
   display:none;
@@ -58,4 +62,17 @@
 /* make all buttons taller (more prominent) */
 .btn {
   height: 40px;
+}
+
+#notebook {
+  padding-top: 0px;
+  font-size: 12px;
+}
+
+#notebook-container{
+  padding:0;
+}
+
+.CodeMirror {
+  font-size: 12px;
 }
