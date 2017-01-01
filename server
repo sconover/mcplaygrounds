@@ -56,7 +56,7 @@ def bootstrap(args):
     ssh_exec("file oogway/.git || git clone {}".format(config.oogway_git_repo))
 
     # set up nginx, notably to be able to point to playground nginx.conf's
-    scp_r("server-config/nginx.conf", "/tmp")
+    scp_r("server-files/nginx.conf", "/tmp")
     ssh_exec_all([
         "sudo cp /tmp/nginx.conf /etc/nginx/nginx.conf",
         "sudo /etc/init.d/nginx reload"

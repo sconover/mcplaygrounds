@@ -76,3 +76,7 @@
 .CodeMirror {
   font-size: 12px;
 }
+
+div.cell.selected {
+  border-width: 2px;
+}
