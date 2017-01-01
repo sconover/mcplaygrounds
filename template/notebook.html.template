@@ -298,11 +298,6 @@ data-notebook-path="{{notebook_path}}"
 <div id="ipython-main-app">
     <div id="notebook_panel">
         <div id="notebook"><div class="container">
-        <b>Cheatsheet</b>
-        <table border="1">
-        <tr><td><b>function<b></d><td><pre>def my_function_name():</pre></td></tr>
-        <tr><td><b>loop<b></d><td><pre>for i in xrange(8):</pre></td></tr>
-        </table>
         </div></div>
         <div id='tooltip' class='ipython_tooltip' style='display:none'></div>
     </div>

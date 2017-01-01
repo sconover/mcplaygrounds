@@ -1,3 +1,5 @@
+create a jsonschema for config files, get rid of code assertions.
+
 client requirements...jsonschema
 
 

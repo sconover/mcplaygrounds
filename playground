@@ -537,7 +537,7 @@ def write_crontab(args):
     for playground_name in all_config:
         if all_config[playground_name].minecraft_server_port:
             crontab_lines.append(
-                at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -Xmx3g -Xms3g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -Xmn512m -XX:ParallelGCThreads=4 -jar sponge-minecraft-server.jar run"))
+                at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -Xmx8g -Xms1g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -Xmn512m -XX:ParallelGCThreads=4 -jar sponge-minecraft-server.jar run"))
             if all_config[playground_name].minecraft_startup_commands and len(all_config[playground_name].minecraft_startup_commands) > 0:
                 minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_name, c), all_config[playground_name].minecraft_startup_commands))
                 crontab_lines.append(

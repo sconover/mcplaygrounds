@@ -1,0 +1,61 @@
+
+/* don't show the cell number / left-hend gutter (space is at a premium on smaller monitors) */
+.prompt {
+  display:none;
+  visibility:hidden;
+}
+
+.input_prompt{
+  display:none;
+  visibility:hidden;
+}
+
+/* fill the whole page */
+.container { width:100% !important; }
+
+/* don't show the header (space is at a premium on smaller monitors) */
+#header-container{
+  display:none;
+  visibility:hidden;
+}
+
+
+/* don't show these buttons (they don't matter) */
+#insert_above_below {
+  display:none;
+  visibility:hidden;
+}
+
+#insert_above_below {
+  display:none;
+  visibility:hidden;
+}
+
+#cut_copy_paste {
+  display:none;
+  visibility:hidden;
+}
+
+#move_up_down {
+  display:none;
+  visibility:hidden;
+}
+
+/* don't show any of the stuff after run_int (doesn't matter) */
+#run_int ~ * {
+  display:none;
+  visibility:hidden;
+}
+
+/* make the run button big and green */
+#run_int > :first-child {
+  width: 100px;
+  background-color: lightgreen;
+  margin-right: 20px;
+  margin-left: 15px;
+}
+
+/* make all buttons taller (more prominent) */
+.btn {
+  height: 40px;
+}
