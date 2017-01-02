@@ -12,6 +12,8 @@ import time
 import fileinput
 import jsonschema
 from string import Template
+import urllib
+import re
 
 from lib import const
 from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, scp_r_remote_to_local
@@ -164,11 +166,8 @@ def create_game_commands(playground_config, nginx_conf_file, index_html_file):
     f.write(index_html_content)
     f.close()
 
-def seed_staging_dir(staging_dir, overlay_dir, template_vars):
-    shutil.rmtree(staging_dir, ignore_errors=True)
-    shutil.copytree(overlay_dir, staging_dir)
-
-    for dirpath, dnames, fnames in os.walk(staging_dir):
+def evaluate_and_replace_templates(root_dir, template_vars):
+    for dirpath, dnames, fnames in os.walk(root_dir):
         for f in fnames:
             path = os.path.join(dirpath, f)
             if (path.endswith(".template")):
@@ -178,6 +177,11 @@ def seed_staging_dir(staging_dir, overlay_dir, template_vars):
                 f.write(new_file_content)
                 f.close()
                 os.remove(path)
+
+def seed_staging_dir(staging_dir, overlay_dir, template_vars):
+    shutil.rmtree(staging_dir, ignore_errors=True)
+    shutil.copytree(overlay_dir, staging_dir)
+    evaluate_and_replace_templates(staging_dir, template_vars)
 
 def stage_overlay_files(playground_config):
     seed_staging_dir(OVERLAY_STAGING_DIR, "playground-overlay", playground_config.to_dict())
@@ -392,11 +396,50 @@ def minecraft_world_dir(playground_name):
 # TODO: ...then copy the ipynb's
 
 
+CLIENT_CONFIG_TEMPLATE_DIR = "playground-overlay/webroot"
+URL_BIN_PREP_DIR = "/tmp/playground-url-bin"
+
+
+# make client config template files and scripts on the server
+# that allow us to signal to native clients that they should switch
+# to the ipython notebook url for the ipynb file in question
+def create_client_url_switch_scripts(dest_playground_config, ipynb_relative_path):
+    shutil.rmtree(URL_BIN_PREP_DIR, ignore_errors=True)
+    os.makedirs(URL_BIN_PREP_DIR)
+    for dirpath, dnames, fnames in os.walk(CLIENT_CONFIG_TEMPLATE_DIR):
+        for f in fnames:
+            path = os.path.join(dirpath, f)
+            if (path.endswith(".client-config.json.template")):
+                client_config_name = "switch_client_browser_to_" + re.sub(r"[^A-Za-z0-9]+", "_", ipynb_relative_path) + "_" + f
+
+                config = json.loads(open(path).read())
+                # example: http://a.giantpurplekitty.com/foo/python/notebooks/Programming2.7%20-%20Putting%20it%20all%20together.ipynb
+                config["browser_window"]["url"] = \
+                    'http://${fully_qualified_domain_name}/${playground_name}/python/notebooks/' + \
+                    urllib.quote(ipynb_relative_path)
+                client_config_str = json.dumps(config, indent=2)
+                fw = open(URL_BIN_PREP_DIR + "/" + client_config_name, 'w')
+                fw.write(client_config_str)
+                fw.close()
+
+                remote_config_path = client_config_name.replace(".template", "")
+                remote_webroot_path = f.replace(".template", "")
+                switch_to_url_bash = "\n".join([
+                    "#/bin/bash -ex",
+                    "",
+                    "this_dir=$(dirname $0)",
+                    "cp $this_dir/{} $this_dir/../webroot/{}".format(remote_config_path, remote_webroot_path),
+                    ""
+                ])
+                write_executable_file(switch_to_url_bash, URL_BIN_PREP_DIR + "/" + client_config_name.replace(".client-config.json.template", ""))
+    evaluate_and_replace_templates(URL_BIN_PREP_DIR, dest_playground_config.to_dict())
+
 def quick_backup_ipython_notebooks(playground_name):
     backup_dir = os.path.join("ipython_quick_backups", time.strftime("%Y%m%dT%H%M%S") + "-" + playground_name)
     backup_ipython_notebooks(playground_name, backup_dir)
 
 def copy_ipynb(args):
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
     quick_backup_ipython_notebooks(args.playground_name)
     existing_ipynb_wildcard = os.path.join(ipython_data_dir(args.playground_name), args.ipynb_wildcard + ".ipynb")
     ipynb_wildcard = os.path.join(ipython_data_dir(args.source_playground_name), args.ipynb_wildcard + ".ipynb")
@@ -410,10 +453,18 @@ def copy_ipynb(args):
             print ipynb
     ssh_exec("rm {} || true".format(existing_ipynb_wildcard))
     ssh_exec("cp {} {}/{}".format(ipynb_wildcard, ipython_data_dir(args.playground_name), args.dest_subdir))
+
+    for ipynb in ipynbs:
+        ipynb_relative_path = ipynb.replace(ipython_data_dir(args.source_playground_name) + "/", "")
+        create_client_url_switch_scripts(playground_config, ipynb_relative_path)
+    ssh_exec("mkdir -p {}".format(pdir(args.playground_name) + "/url-bin"))
+    scp_r(URL_BIN_PREP_DIR + "/.", pdir(args.playground_name) + "/url-bin")
+
 copy_ipynb_parser = subparsers.add_parser("copy-ipynb", help='{} copy-ipynb')
 copy_ipynb_parser.add_argument('source_playground_name', help='the playground that has the ipython notebook(s)')
 copy_ipynb_parser.add_argument('ipynb_wildcard', help='wildcard that matches ipython notebook(s)')
 copy_ipynb_parser.add_argument('dest_subdir', help='destination subdirectory')
+copy_ipynb_parser.add_argument('playground_config_file', help='playground config file')
 copy_ipynb_parser.set_defaults(func=copy_ipynb)
 
 def backup_ipython_notebooks(playground_name, ipython_data_backup_dir):
