@@ -40,6 +40,9 @@ def bootstrap(args):
     # allow www-data user to execute game-bin scripts as the ubuntu user, nopasswd
     ssh_exec("sudo sh -c \"echo 'www-data ALL = (ubuntu) NOPASSWD: /home/ubuntu/playgrounds/*/game-bin/*' > /etc/sudoers.d/www-data-game-bin\"")
 
+    # allow www-data user to execute url-bin scripts as the ubuntu user, nopasswd
+    ssh_exec("sudo sh -c \"echo 'www-data ALL = (ubuntu) NOPASSWD: /home/ubuntu/playgrounds/*/url-bin/*' > /etc/sudoers.d/www-data-url-bin\"")
+
     ssh_exec_all([
         "sudo add-apt-repository {} -y".format(config.modern_gradle_apt_repo), # need a modern gradle
         "sudo add-apt-repository {} -y".format(config.modern_nginx_apt_repo), # need a modern nginx

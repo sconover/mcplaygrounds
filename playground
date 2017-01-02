@@ -92,6 +92,31 @@ def bash_fragment_teleport(teleport_action):
         ""
     ]).format(**locals())
 
+def nginx_location_directive_for_executable(playground_name, url_path, executable_relative_path, redirect_url_relative_path):
+    return "\n".join([
+        "",
+        "  location " + url_path + " {",
+        "    content_by_lua 'os.execute(\"sudo -u ubuntu /home/ubuntu/playgrounds/" +
+            playground_name + "/" + executable_relative_path + "\");return ngx.redirect(\"/" +
+            playground_name + redirect_url_relative_path + "\")';",
+        "  }",
+        ""
+    ])
+
+def rewrite_file_with_replace(path, search_for, replace_with):
+    content = open(path).read()
+    content = content.replace(search_for, replace_with)
+    f = open(path, 'w')
+    f.write(content)
+    f.close()
+
+def rewrite_file_with_multiline_regex_replace(path, regex, replace_with):
+    content = open(path).read()
+    content = re.sub(regex, replace_with, content, re.M | re.DOTALL)
+    f = open(path, 'w')
+    f.write(content)
+    f.close()
+
 def create_game_commands(playground_config, nginx_conf_file, index_html_file):
     # TODO?: pull gamemode/spectator changes into here
 
@@ -141,30 +166,18 @@ def create_game_commands(playground_config, nginx_conf_file, index_html_file):
     for game_bin_script_file_name in all_game_bin_script_file_names:
         url_path = "/" + playground_config.playground_name + "/" + game_bin_script_file_name
         url_paths.append(url_path)
-        location_directive = "\n".join([
-            "",
-            "  location " + url_path + " {",
-            "    content_by_lua 'os.execute(\"sudo -u ubuntu /home/ubuntu/playgrounds/" +
-                playground_config.playground_name +
-                "/game-bin/" + game_bin_script_file_name + "\");return ngx.redirect(\"/" +
-                playground_config.playground_name + "#game-bin\")';",
-            "  }",
-            ""
-        ])
+        location_directive = \
+            nginx_location_directive_for_executable(
+                playground_config.playground_name,
+                url_path,
+                "game-bin/" + game_bin_script_file_name,
+                "#game-bin")
         nginx_location_directives += location_directive
 
-    nginx_content = open(nginx_conf_file).read()
-    nginx_content = nginx_content.replace("# GAME_BIN_PATHS_GO_HERE", nginx_location_directives)
-    f = open(nginx_conf_file, 'w')
-    f.write(nginx_content)
-    f.close()
+    rewrite_file_with_replace(nginx_conf_file, "# GAME_BIN_PATHS_GO_HERE", nginx_location_directives)
 
     game_bin_items = map(lambda u: "<li><a href=\"" + u + "\">" + u + "</a></li>", url_paths)
-    index_html_content = open(index_html_file).read()
-    index_html_content = index_html_content.replace("<!-- GAME_BIN_PATHS_GO_HERE -->", "<ul>\n" + "\n".join(game_bin_items) + "\n</ul>")
-    f = open(index_html_file, 'w')
-    f.write(index_html_content)
-    f.close()
+    rewrite_file_with_replace(index_html_file, "<!-- GAME_BIN_PATHS_GO_HERE -->", "<ul>\n" + "\n".join(game_bin_items) + "\n</ul>")
 
 def evaluate_and_replace_templates(root_dir, template_vars):
     for dirpath, dnames, fnames in os.walk(root_dir):
@@ -399,6 +412,7 @@ def minecraft_world_dir(playground_name):
 CLIENT_CONFIG_TEMPLATE_DIR = "playground-overlay/webroot"
 DEST_URL_BIN_PREP_DIR = "/tmp/playground-url-bin-dest"
 SOURCE_URL_BIN_PREP_DIR = "/tmp/playground-url-bin-source"
+SOURCE_WEB_FILES_DIR = "/tmp/playground-web-files"
 
 
 # make client config template files and scripts on the server
@@ -454,6 +468,46 @@ def create_client_url_switch_scripts(source_playground_config, dest_playground_c
                 write_executable_file(switch_all_bash, SOURCE_URL_BIN_PREP_DIR + "/" + switch_all_script_name)
     evaluate_and_replace_templates(DEST_URL_BIN_PREP_DIR, dest_playground_config.to_dict())
 
+def add_switch_all_commands_to_web_files(playground_config, nginx_conf_path, index_html_path):
+    paths = ssh_get("find {}/url-bin/ -name 'switch_all_client_browsers*'".format(pdir(playground_config.playground_name))).strip().split("\n")
+    relative_paths = map(lambda path: path.replace(pdir(playground_config.playground_name) + "/", ""), paths)
+
+    url_paths = []
+
+    nginx_location_directives = ""
+    for switch_all_script in relative_paths:
+        url_path = "/" + playground_config.playground_name + "/" + os.path.basename(switch_all_script)
+        url_paths.append(url_path)
+        location_directive = \
+            nginx_location_directive_for_executable(
+                playground_config.playground_name,
+                url_path,
+                switch_all_script,
+                "#url-bin")
+        nginx_location_directives += location_directive
+
+    rewrite_file_with_multiline_regex_replace(
+        nginx_conf_path,
+        r"# URL_BIN_PATHS_START_HERE[\s\S]*# URL_BIN_PATHS_END_HERE",
+        "\n".join([
+            "# URL_BIN_PATHS_START_HERE",
+            "",
+            nginx_location_directives,
+            "",
+            "# URL_BIN_PATHS_END_HERE"]))
+
+    url_bin_items = map(lambda u: "<li><a href=\"" + u + "\">" + u + "</a></li>", url_paths)
+    rewrite_file_with_multiline_regex_replace(
+        index_html_path,
+        r"<!-- URL_BIN_PATHS_START -->[\s\S]*<!-- URL_BIN_PATHS_END -->",
+        "\n".join([
+            "<!-- URL_BIN_PATHS_START -->",
+            "",
+            "<ul>\n" + "\n".join(url_bin_items) + "\n</ul>",
+            "",
+            "<!-- URL_BIN_PATHS_END -->"]))
+
+
 def quick_backup_ipython_notebooks(playground_name):
     backup_dir = os.path.join("ipython_quick_backups", time.strftime("%Y%m%dT%H%M%S") + "-" + playground_name)
     backup_ipython_notebooks(playground_name, backup_dir)
@@ -477,11 +531,31 @@ def copy_ipynb(args):
 
     for ipynb in ipynbs:
         ipynb_relative_path = ipynb.replace(ipython_data_dir(args.source_playground_name) + "/", "")
+        ipynb_relative_path = args.dest_subdir + "/" + ipynb_relative_path
         create_client_url_switch_scripts(source_playground_config, playground_config, ipynb_relative_path)
     ssh_exec("mkdir -p {}".format(pdir(args.playground_name) + "/url-bin"))
     scp_r(DEST_URL_BIN_PREP_DIR + "/.", pdir(args.playground_name) + "/url-bin")
     ssh_exec("mkdir -p {}".format(pdir(args.source_playground_name) + "/url-bin"))
     scp_r(SOURCE_URL_BIN_PREP_DIR + "/.", pdir(args.source_playground_name) + "/url-bin")
+
+    shutil.rmtree(SOURCE_WEB_FILES_DIR, ignore_errors=True)
+    os.makedirs(SOURCE_WEB_FILES_DIR)
+    nginx_conf_content = ssh_get("cat {}/nginx.conf".format(pdir(args.source_playground_name)))
+    local_nginx_conf_path = SOURCE_WEB_FILES_DIR + "/nginx.conf"
+    index_html_content = ssh_get("cat {}/webroot/index.html".format(pdir(args.source_playground_name)))
+    local_index_html_path = SOURCE_WEB_FILES_DIR + "/index.html"
+    f = open(local_nginx_conf_path, "w")
+    f.write(nginx_conf_content)
+    f.close()
+    f = open(local_index_html_path, "w")
+    f.write(index_html_content)
+    f.close()
+
+    add_switch_all_commands_to_web_files(source_playground_config, local_nginx_conf_path, local_index_html_path)
+    scp_r(local_nginx_conf_path, "{}/nginx.conf".format(pdir(args.source_playground_name)))
+    scp_r(local_index_html_path, "{}/webroot/index.html".format(pdir(args.source_playground_name)))
+    reload_nginx()
+
 
 copy_ipynb_parser = subparsers.add_parser("copy-ipynb", help='{} copy-ipynb')
 copy_ipynb_parser.add_argument('source_playground_name', help='the playground that has the ipython notebook(s)')
