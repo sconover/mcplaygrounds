@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CefSharp;
+using System.Diagnostics;
 
 namespace mcprog2.Util
 {
@@ -27,7 +28,7 @@ namespace mcprog2.Util
             
             if (host == targetHost)
             {
-                Console.WriteLine("because host is '" + host + "', providing basic auth creds, username='" + basicAuthUsername + "'");
+                Trace.TraceInformation("because host is '" + host + "', providing basic auth creds, username='" + basicAuthUsername + "'");
                 callback.Continue(basicAuthUsername, basicAuthPassword);
             }
             return true;

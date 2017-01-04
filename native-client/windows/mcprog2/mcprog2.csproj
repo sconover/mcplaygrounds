@@ -143,6 +143,7 @@
     <Compile Include="Util\ConfigUtil.cs" />
     <Compile Include="Util\GlobalKeyHook.cs" />
     <Compile Include="Util\GlobalSettings.cs" />
+    <Compile Include="Util\LogUtil.cs" />
     <Compile Include="Util\UIProcessUtil.cs" />
     <Compile Include="Util\ZipJarUtil.cs" />
     <Page Include="MCProg.xaml">
@@ -226,7 +227,7 @@
   <Import Project="..\packages\CefSharp.Wpf.53.0.0\build\CefSharp.Wpf.targets" Condition="Exists('..\packages\CefSharp.Wpf.53.0.0\build\CefSharp.Wpf.targets')" />
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties minecraft-google_1config_1json__JSONSchema="..\..\..\schemas\native-client-config-schema.json" notepad-google_1config_1json__JSONSchema="..\..\..\schemas\native-client-config-schema.json" />
+      <UserProperties notepad-google_1config_1json__JSONSchema="..\..\..\schemas\native-client-config-schema.json" minecraft-google_1config_1json__JSONSchema="..\..\..\schemas\native-client-config-schema.json" />
     </VisualStudio>
   </ProjectExtensions>
   <PropertyGroup>

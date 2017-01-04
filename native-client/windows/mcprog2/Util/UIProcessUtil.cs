@@ -9,6 +9,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Threading;
+using System.Diagnostics;
 
 namespace mcprog2.Util
 {
@@ -37,7 +38,7 @@ namespace mcprog2.Util
             argumentStr += GlobalSettings.substitute(javaMainClass);
             argumentStr += " ";
             argumentStr += string.Join(" ", javaProgramArguments.Select(str => GlobalSettings.substitute(str)));
-            Console.WriteLine("returning assembled java command: executable: " + executable + " argumentStr: " + argumentStr);
+            Trace.TraceInformation("returning assembled java command: executable: " + executable + " argumentStr: " + argumentStr);
 
             ProcessStartInfo processStartInfo = new ProcessStartInfo(executable);
             processStartInfo.Arguments = argumentStr;
@@ -51,7 +52,7 @@ namespace mcprog2.Util
 
         private static void logProcessStartInfo(ProcessStartInfo p)
         {
-            Console.WriteLine("PROCESSINFO filename='" + p.FileName + "' arguments='" + p.Arguments + "'");
+            Trace.TraceInformation("PROCESSINFO filename='" + p.FileName + "' arguments='" + p.Arguments + "'");
         }
 
         private static string toDebugString(Process p, String comment)
@@ -67,12 +68,12 @@ namespace mcprog2.Util
 
         private static void logProcess(Process p, String comment)
         {
-            Console.WriteLine(toDebugString(p, comment));
+            Trace.TraceInformation(toDebugString(p, comment));
         }
 
         private static IntPtr waitForWindowHavingTitleStartingWith(Process process, String windowTitleStartsWith)
         {
-            Console.WriteLine("waiting for window to appear, having title starting with '" + windowTitleStartsWith +
+            Trace.TraceInformation("waiting for window to appear, having title starting with '" + windowTitleStartsWith +
                 "', and created by process: " + toDebugString(process, "waitForWindow"));
             while (true)
             {
@@ -114,14 +115,14 @@ namespace mcprog2.Util
 
         private static void logFrameworkElement(FrameworkElement element, string comment)
         {
-            Console.WriteLine("Border['" + comment + "']" +
+            Trace.TraceInformation("Border['" + comment + "']" +
                 " actualwidth=" + element.ActualWidth +
                 " actualheight=" + element.ActualHeight);
         }
 
         private static void logWindowFromHandle(IntPtr handle, string comment)
         {
-            Console.WriteLine("Window['" + comment +
+            Trace.TraceInformation("Window['" + comment +
                 "' handle=" + handle.ToString() +
                 " title='" + getWindowTitle(handle) +
                 "']");
@@ -160,7 +161,7 @@ namespace mcprog2.Util
             RECT rct;
             GetWindowRect(new HandleRef(wrapper, handle), out rct);
 
-            Console.WriteLine("Window['" + comment +
+            Trace.TraceInformation("Window['" + comment +
                 "' handle=" + handle.ToString() +
                 " title='" + getWindowTitle(handle) +
                 "'] rect: " +
@@ -204,7 +205,7 @@ namespace mcprog2.Util
             IntPtr dockedWindowHandle = waitForWindowHavingTitleStartingWith(subProcess, waitForWindowWithTitleStartingWith);
             logWindowRectFromHandle(hostWindow, dockedWindowHandle, "docked");
 
-            Console.WriteLine("SetParent of window=" + dockedWindowHandle + " to window=" + hostWindowHandle);
+            Trace.TraceInformation("SetParent of window=" + dockedWindowHandle + " to window=" + hostWindowHandle);
             //returns the handle of the window's parent prior to this call.
             IntPtr originalWindowParentHandle = SetParent(dockedWindowHandle, hostWindowHandle);
             logWindowRectFromHandle(hostWindow, originalWindowParentHandle, "original-parent");

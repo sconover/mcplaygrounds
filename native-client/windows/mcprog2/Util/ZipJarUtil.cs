@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO.Compression;
 using System.IO;
+using System.Diagnostics;
 
 namespace mcprog2.Util
 {
@@ -16,7 +17,7 @@ namespace mcprog2.Util
             foreach (string zipArchivePath in zipArchivePaths)
             {
                 string fullZipArchivePath = GlobalSettings.substitute(zipArchivePath);
-                Console.WriteLine("extract zip archive: " + fullZipArchivePath);
+                Trace.TraceInformation("extract zip archive: " + fullZipArchivePath);
                 Contract.Requires(File.Exists(fullZipArchivePath), "file not found: " + fullZipArchivePath);
                 unzip(fullZipArchivePath, extractDir);
             }
@@ -29,7 +30,7 @@ namespace mcprog2.Util
             foreach (ZipStorer.ZipFileEntry entry in entries)
             {
                 string destPath = extractDir + "\\" + entry.FilenameInZip;
-                Console.WriteLine("unzip from archive '" + zipFilePath + "' to '" + destPath + "'");
+                Trace.TraceInformation("unzip from archive '" + zipFilePath + "' to '" + destPath + "'");
                 zip.ExtractFile(entry, destPath);
             }
             zip.Close();

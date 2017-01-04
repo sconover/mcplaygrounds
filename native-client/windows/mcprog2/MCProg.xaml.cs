@@ -17,6 +17,7 @@ using System.IO;
 using System.Diagnostics.Contracts;
 using Microsoft.VisualBasic;
 using System.Threading.Tasks;
+using Microsoft.VisualBasic.Logging;
 
 namespace mcprog2
 {
@@ -36,7 +37,8 @@ namespace mcprog2
         {
             InitializeComponent();
 
-            syncContext = SynchronizationContext.Current;     
+            syncContext = SynchronizationContext.Current;
+            Trace.Listeners.Add(LogUtil.getAppLogTraceListener());
         }
         
         private void HostedAppWindow_Loaded(object sender, RoutedEventArgs e)
@@ -51,10 +53,6 @@ namespace mcprog2
             HostedAppWindow.SizeChanged += new SizeChangedEventHandler(HostedAppWindow_Resize);
 
             this.Closing += (innerSender, args) => shutdown();
-
-            // TODO: make this loadable from menu
-            // TODO: detect url, load that
-            // TODO: poll url, reload as app is running...?
 
             this.config = ConfigUtil.load();
             GlobalSettings.loadFromJsonConfig(this.config);
@@ -280,7 +278,7 @@ namespace mcprog2
 
         void log(string output)
         {
-            syncContext.Post(_ => Console.WriteLine(output), null);
+            syncContext.Post(_ => Trace.TraceInformation("TRACE " + output), null);
         }
         
         private string nativeDllExtractDir()

@@ -8,6 +8,7 @@ using Newtonsoft.Json.Schema;
 using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Diagnostics.Contracts;
+using System.Diagnostics;
 
 namespace mcprog2.Util
 {
@@ -91,7 +92,7 @@ namespace mcprog2.Util
                 string searchFor = "%" + k + "%";
                 if (input.Contains(searchFor))
                 {
-                    Console.WriteLine("variable replacement: found key '" + searchFor + "', replacing with value '" + settings[k] + "' full original string: '" + input + "'");
+                    Trace.TraceInformation("variable replacement: found key '" + searchFor + "', replacing with value '" + settings[k] + "' full original string: '" + input + "'");
                     input = input.Replace(searchFor, settings[k]);
                 }
             }
