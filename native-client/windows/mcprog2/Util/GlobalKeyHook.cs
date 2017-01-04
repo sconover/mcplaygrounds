@@ -32,11 +32,13 @@ namespace mcprog2.Util
 
         public void startListeningForKeyPress()
         {
+            Trace.TraceInformation("GlobalKeyHook: start listening for key press, keycode=" + this.listenForKeyCode);
             hookId = SetHook(proc);
         }
 
         public void stopListeningForKeyPress()
         {
+            Trace.TraceInformation("GlobalKeyHook: stop listening for key press, keycode=" + this.listenForKeyCode);
             Contract.Requires(hookId != IntPtr.Zero);
             UnhookWindowsHookEx(hookId);
             hookId = IntPtr.Zero;

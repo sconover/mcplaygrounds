@@ -20,6 +20,7 @@ namespace mcprog2.Util
         {
             Contract.Requires(!settings.ContainsKey(key), "will not override setting. key='" + key +
                 "' newValue='" + value + "'");
+            Trace.TraceInformation("add global setting: key='" + key + "' value='" + value + "'");
 
             settings[key] = value;
         }

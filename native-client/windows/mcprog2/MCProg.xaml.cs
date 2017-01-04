@@ -60,7 +60,7 @@ namespace mcprog2
             Browser.WebBrowser.RequestHandler = ConfigUtil.loadBasicAuthPopulatorFromBootstrapJson();
             Browser.WebBrowser.LifeSpanHandler = new BrowserLifeSpanHandler();
             lastBrowserUrlFromConfig = (string)config["browser_window"]["url"];
-            Browser.Load(lastBrowserUrlFromConfig); 
+            loadUrlInBrowser(lastBrowserUrlFromConfig); 
             // do not use Browser.WebBrowser.Load ... things do not load properly when using buildt exe's
 
             extractNativeJars();
@@ -87,7 +87,7 @@ namespace mcprog2
                     if (currentUrl != lastBrowserUrlFromConfig)
                     {
                         log("detected new url from config, automatically loading in browser. new='" + currentUrl + "' old='" + lastBrowserUrlFromConfig + "'");
-                        Browser.Load(currentUrl);
+                        loadUrlInBrowser(currentUrl);
                         lastBrowserUrlFromConfig = currentUrl;
                     }
                 } catch (Exception ex)
@@ -151,7 +151,7 @@ namespace mcprog2
             browseToUrl.Click += (innerSender, args) => {
                 string currentUrl = Browser.WebBrowser.Address.ToString();
                 string newUrl = Interaction.InputBox("Browse To URL...", "URL", currentUrl, 0, 0);
-                Browser.Load(newUrl);
+                loadUrlInBrowser(newUrl);
                 updateWindowTitle();
             };
             menu.Items.Add(browseToUrl);
@@ -222,6 +222,12 @@ namespace mcprog2
             browserBorder.BorderBrush = new SolidColorBrush(Colors.Magenta);
         }
 
+        private void loadUrlInBrowser(string url)
+        {
+            log("Browser load url " + url);
+            Browser.Load(url);
+        }
+
         private void toggleFocus()
         {
             if (dockedWindowAndSubProcess.dockedWindowHandle != IntPtr.Zero)
@@ -278,7 +284,7 @@ namespace mcprog2
 
         void log(string output)
         {
-            syncContext.Post(_ => Trace.TraceInformation("TRACE " + output), null);
+            syncContext.Post(_ => Trace.TraceInformation(output), null);
         }
         
         private string nativeDllExtractDir()

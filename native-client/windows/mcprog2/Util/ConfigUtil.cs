@@ -37,6 +37,7 @@ namespace mcprog2.Util
 
         private static JObject loadConfig(Uri uri, string username, string password)
         {
+            Trace.TraceInformation("Config: loading from '" + uri.ToString() + "' with username '" + username + "'");
             WebClient client = new WebClient { Credentials = new NetworkCredential(username, password) };
             string json = client.DownloadString(uri);
             JObject config = JObject.Parse(json);
