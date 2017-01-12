@@ -39,6 +39,13 @@ namespace mcprog2
 
             syncContext = SynchronizationContext.Current;
             Trace.Listeners.Add(LogUtil.getAppLogTraceListener());
+
+            AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs args) =>
+            {
+                Exception ex = (Exception)args.ExceptionObject;
+                Trace.TraceError(ex.Message + "\ntrace: " + ex.StackTrace.Trim());
+                throw ex;
+            };
         }
         
         private void HostedAppWindow_Loaded(object sender, RoutedEventArgs e)
