@@ -114,6 +114,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
@@ -138,6 +139,11 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="Util\BrowserBasicAuthPopulator.cs" />
     <Compile Include="Util\BrowserLifeSpanHandler.cs" />
     <Compile Include="Util\ConfigUtil.cs" />
@@ -162,11 +168,6 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -209,6 +210,12 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\giant_purple_kitty_3_16.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\giant_purple_kitty_3_32.ico" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\cef.redist.x64.3.2785.1482\build\cef.redist.x64.targets" Condition="Exists('..\packages\cef.redist.x64.3.2785.1482\build\cef.redist.x64.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
@@ -227,7 +234,7 @@
   <Import Project="..\packages\CefSharp.Wpf.53.0.0\build\CefSharp.Wpf.targets" Condition="Exists('..\packages\CefSharp.Wpf.53.0.0\build\CefSharp.Wpf.targets')" />
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties notepad-google_1config_1json__JSONSchema="..\..\..\schemas\native-client-config-schema.json" minecraft-google_1config_1json__JSONSchema="..\..\..\schemas\native-client-config-schema.json" />
+      <UserProperties minecraft-google_1config_1json__JSONSchema="..\..\..\schemas\native-client-config-schema.json" notepad-google_1config_1json__JSONSchema="..\..\..\schemas\native-client-config-schema.json" />
     </VisualStudio>
   </ProjectExtensions>
   <PropertyGroup>
