@@ -1,5 +1,6 @@
 ﻿{
-  "uri": "http://a.giantpurplekitty.com/silver/notepad-windows.client-config.json",
+  "base_uri": "http://a.giantpurplekitty.com/silver",
+  "config_path": "/notepad-windows.client-config.json",
   "basic_auth_username": "silver",
   "basic_auth_password": "fishdish"
 }

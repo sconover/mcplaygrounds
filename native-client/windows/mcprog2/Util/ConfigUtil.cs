@@ -16,23 +16,35 @@ namespace mcprog2.Util
     {
         public static string getLatestBrowserUrlFromConfig()
         {
-            return (string)load()["browser_window"]["url"];
+            return (string)load().serverConfig["browser_window"]["url"];
         }
 
-        public static JObject load()
+        public static AllConfig load()
         {
             BootstrapConfig bootstrap = loadBootstrapConfig();
 
-            return loadConfig(
-                bootstrap.ConfigUri,
-                bootstrap.BasicAuthUsername,
-                bootstrap.BasicAuthPassword);
+            JObject serverConfig = 
+                loadConfig(
+                    bootstrap.ConfigUri,
+                    bootstrap.BasicAuthUsername,
+                    bootstrap.BasicAuthPassword);
+
+            AllConfig allConfig = new AllConfig();
+            allConfig.bootstrapConfig = bootstrap;
+            allConfig.serverConfig = serverConfig;
+            return allConfig;
         }
 
         public static BrowserBasicAuthPopulator loadBasicAuthPopulatorFromBootstrapJson()
         {
             BootstrapConfig bootstrap = loadBootstrapConfig();
             return new BrowserBasicAuthPopulator(bootstrap.ConfigUri.Host, bootstrap.BasicAuthUsername, bootstrap.BasicAuthPassword);
+        }
+
+        public struct AllConfig
+        {
+            public BootstrapConfig bootstrapConfig;
+            public JObject serverConfig;
         }
 
         private static JObject loadConfig(Uri uri, string username, string password)
@@ -63,8 +75,9 @@ namespace mcprog2.Util
             return path;
         }
 
-        private struct BootstrapConfig
+        public struct BootstrapConfig
         {
+            public Uri BaseUri;
             public Uri ConfigUri;
             public string BasicAuthUsername;
             public string BasicAuthPassword;
@@ -74,26 +87,30 @@ namespace mcprog2.Util
         {
             string bootstrapFilePath = filePathRelativeToProcess("bootstrap.json");
             JObject bootstrap = JObject.Parse(File.ReadAllText(bootstrapFilePath));
-            if (bootstrap["uri"] == null ||
+            if (bootstrap["base_uri"] == null ||
+                bootstrap["config_path"] == null ||
                 bootstrap["basic_auth_username"] == null ||
                 bootstrap["basic_auth_password"] == null)
             {
                 throw new Exception("invalid bootstrap.json");
             }
 
-            Uri uri = null;
-            string uriStr = (string)bootstrap["uri"];
-            if (!uriStr.StartsWith("file") && !uriStr.StartsWith("http"))
+            Uri configUri = null;
+            string configUriStr = (string)bootstrap["base_uri"] + (string)bootstrap["config_path"];
+            if (!configUriStr.StartsWith("file") && !configUriStr.StartsWith("http"))
             {
-                uri = uriFromRelativeFilePathToProcess(uriStr);
+                configUri = uriFromRelativeFilePathToProcess(configUriStr);
             }
             else
             {
-                uri = new Uri(uriStr);
+                configUri = new Uri(configUriStr);
             }
 
+            Uri baseUri = new Uri((string)bootstrap["base_uri"]);
+
             BootstrapConfig b = new BootstrapConfig();
-            b.ConfigUri = uri;
+            b.BaseUri = baseUri;
+            b.ConfigUri = configUri;
             b.BasicAuthUsername = (string)bootstrap["basic_auth_username"];
             b.BasicAuthPassword = (string)bootstrap["basic_auth_password"];
             return b;

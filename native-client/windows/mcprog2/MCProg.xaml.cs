@@ -18,6 +18,10 @@ using System.Diagnostics.Contracts;
 using Microsoft.VisualBasic;
 using System.Threading.Tasks;
 using Microsoft.VisualBasic.Logging;
+using System.Collections.Concurrent;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 
 namespace mcprog2
 {
@@ -30,16 +34,20 @@ namespace mcprog2
         private SynchronizationContext syncContext;
         private GlobalKeyHook f12ToggleKeyHook;
         private bool focusedOnHostedAppWindow;
-        private JObject config;
+        private ConfigUtil.AllConfig allConfig;
         private string lastBrowserUrlFromConfig;
         private IntPtr browserWindowHandle;
+        private InMemoryTraceListener inMemoryTraceListener;
 
         public MainWindow()
         {
             InitializeComponent();
 
+            inMemoryTraceListener = new InMemoryTraceListener();
+
             syncContext = SynchronizationContext.Current;
             Trace.Listeners.Add(LogUtil.getAppLogTraceListener());
+            Trace.Listeners.Add(inMemoryTraceListener);
 
             AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs args) =>
             {
@@ -62,12 +70,12 @@ namespace mcprog2
 
             this.Closing += (innerSender, args) => shutdown();
 
-            this.config = ConfigUtil.load();
-            GlobalSettings.loadFromJsonConfig(this.config);
+            this.allConfig = ConfigUtil.load();
+            GlobalSettings.loadFromJsonConfig(this.allConfig.serverConfig);
 
             Browser.WebBrowser.RequestHandler = ConfigUtil.loadBasicAuthPopulatorFromBootstrapJson();
             Browser.WebBrowser.LifeSpanHandler = new BrowserLifeSpanHandler();
-            lastBrowserUrlFromConfig = (string)config["browser_window"]["url"];
+            lastBrowserUrlFromConfig = (string)allConfig.serverConfig["browser_window"]["url"];
             loadUrlInBrowser(lastBrowserUrlFromConfig); 
             // do not use Browser.WebBrowser.Load ... things do not load properly when using buildt exe's
 
@@ -79,11 +87,12 @@ namespace mcprog2
 
             Task.Run(() => checkForNewBrowserUrlEverySeconds(10));
             Task.Run(() => monitorWindowFocusAndAlignHighlight());
+            Task.Run(() => postAppLogToServerRegularly());
         }
 
         private void updateWindowTitle()
         {
-            this.Title = hostedAppName() + " | " + (string)config["browser_window"]["url"];
+            this.Title = hostedAppName() + " | " + (string)allConfig.serverConfig["browser_window"]["url"];
         }
 
         private void checkForNewBrowserUrlEverySeconds(int secondsBetweenChecks)
@@ -101,7 +110,7 @@ namespace mcprog2
                     }
                 } catch (Exception ex)
                 {
-                    
+                    Trace.TraceError(ex.ToString());
                 }
 
                 Thread.Sleep(secondsBetweenChecks * 1000);
@@ -132,6 +141,64 @@ namespace mcprog2
             });
         }
 
+        private void postAppLogToServerRegularly()
+        {
+            while(true)
+            {
+                try
+                {
+                    string[] logLines = inMemoryTraceListener.dequeueAll();
+
+                    if (logLines.Length == 0)
+                    {
+                        Trace.TraceInformation("Server log post: no log lines found, sleeping.");
+                    }
+                    else
+                    {
+                        string logLinesJoined = string.Join("\n", logLines) + "\n";
+                        httpPost(
+                            logLinesJoined, 
+                            allConfig.bootstrapConfig.BaseUri.ToString() + "/appendlog", 
+                            allConfig.bootstrapConfig.BasicAuthUsername, 
+                            allConfig.bootstrapConfig.BasicAuthPassword);
+                    }
+
+                    Thread.Sleep(2000);
+                }
+                catch( Exception ex)
+                {
+                    Trace.TraceError(ex.ToString());
+                }
+            }
+        }
+
+        private bool httpPost(string requestBody, string url, string username, string password)
+        {
+            HttpClient client = new HttpClient();
+            var credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes(string.Format("{0}:{1}", username, password)));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+            HttpRequestMessage request = new HttpRequestMessage();
+            request.Method = HttpMethod.Post;
+            request.RequestUri = new Uri(url);
+
+            ASCIIEncoding encoding = new ASCIIEncoding();
+            byte[] requestBodyBytes = encoding.GetBytes(requestBody);
+            request.Content = new ByteArrayContent(requestBodyBytes);
+
+            Task<HttpResponseMessage> responseTask = client.SendAsync(request);
+            responseTask.Wait();
+            HttpResponseMessage response = responseTask.Result;
+
+            bool isOk = response.StatusCode == System.Net.HttpStatusCode.OK;
+
+            if (!isOk)
+            {
+                Trace.TraceError("http error when posting to '" + url + "': " + response.ToString());
+            }
+
+            return isOk;
+        }
+
         private void HostedAppWindow_Resize(object sender, EventArgs e)
         {
             UIProcessUtil.MakeWindowSameSizeAndPositionAsElement(
@@ -152,7 +219,7 @@ namespace mcprog2
         
         private string hostedAppName()
         {
-            return (string)config["hosted_app_window"]["name"];
+            return (string)allConfig.serverConfig["hosted_app_window"]["name"];
         }
 
         private ContextMenu buildContextMenu()
@@ -194,7 +261,7 @@ namespace mcprog2
         
         private void startAndDockHostedApp()
         {
-            Contract.Requires(config != null, "config not loaded");
+            Contract.Requires(allConfig.serverConfig != null, "config not loaded");
 
             if (dockedWindowAndSubProcess.subProcess != null)
             {
@@ -203,22 +270,22 @@ namespace mcprog2
 
             ProcessStartInfo processStartInfo = null;
 
-            if (config["hosted_app_window"]["process_info"]["java_executable_path"] != null)
+            if (allConfig.serverConfig["hosted_app_window"]["process_info"]["java_executable_path"] != null)
             {
                 // Minecraft arguments:
                 // https://github.com/tomsik68/mclauncher-api/wiki/Minecraft-1.6-Launcher
 
                 processStartInfo = UIProcessUtil.assembleJavaProcessStartInfo(
-                    (string)config["hosted_app_window"]["process_info"]["java_executable_path"],
-                    config["hosted_app_window"]["process_info"]["java_x_options"].Select(j => j.ToString()).ToArray(),
-                    config["hosted_app_window"]["process_info"]["java_system_properties"].Select(j => j.ToString()).ToArray(),
-                    config["hosted_app_window"]["process_info"]["java_classpath_components"].Select(j => j.ToString()).ToArray(),
-                    (string)config["hosted_app_window"]["process_info"]["java_main_class"],
-                    config["hosted_app_window"]["process_info"]["java_program_arguments"].Select(j => j.ToString()).ToArray());
+                    (string)allConfig.serverConfig["hosted_app_window"]["process_info"]["java_executable_path"],
+                    allConfig.serverConfig["hosted_app_window"]["process_info"]["java_x_options"].Select(j => j.ToString()).ToArray(),
+                    allConfig.serverConfig["hosted_app_window"]["process_info"]["java_system_properties"].Select(j => j.ToString()).ToArray(),
+                    allConfig.serverConfig["hosted_app_window"]["process_info"]["java_classpath_components"].Select(j => j.ToString()).ToArray(),
+                    (string)allConfig.serverConfig["hosted_app_window"]["process_info"]["java_main_class"],
+                    allConfig.serverConfig["hosted_app_window"]["process_info"]["java_program_arguments"].Select(j => j.ToString()).ToArray());
             } else
             {
-                processStartInfo = new ProcessStartInfo((string)config["hosted_app_window"]["process_info"]["file_name"]);
-                processStartInfo.Arguments = (string)config["hosted_app_window"]["process_info"]["arguments"];
+                processStartInfo = new ProcessStartInfo((string)allConfig.serverConfig["hosted_app_window"]["process_info"]["file_name"]);
+                processStartInfo.Arguments = (string)allConfig.serverConfig["hosted_app_window"]["process_info"]["arguments"];
             }
 
             processStartInfo.WindowStyle = ProcessWindowStyle.Maximized;
@@ -226,7 +293,7 @@ namespace mcprog2
             dockedWindowAndSubProcess = UIProcessUtil.DockSubProcessWindow(
                 this,
                 processStartInfo,
-                (string)config["hosted_app_window"]["wait_for_window_title_starts_with"],
+                (string)allConfig.serverConfig["hosted_app_window"]["wait_for_window_title_starts_with"],
                 HostedAppWindow);
             
             dockedWindowAndSubProcess.subProcess.BeginOutputReadLine();
@@ -337,19 +404,19 @@ namespace mcprog2
         
         private string nativeDllExtractDir()
         {
-            return (string)config["hosted_app_window"]["process_info"]["java_system_properties"]
+            return (string)allConfig.serverConfig["hosted_app_window"]["process_info"]["java_system_properties"]
                 .Single(s => s.ToString().StartsWith("-Djava.library.path="))
                 .ToString().Replace("-Djava.library.path=", "");
         }
 
         private void extractNativeJars()
         {
-            if (config["hosted_app_window"]["process_info"]["native_jars"] == null)
+            if (allConfig.serverConfig["hosted_app_window"]["process_info"]["native_jars"] == null)
             {
                 return;
             }
             ZipJarUtil.unzipArchivesToDir(
-                config["hosted_app_window"]["process_info"]["native_jars"].Select(j => j.ToString()).ToArray(),
+                allConfig.serverConfig["hosted_app_window"]["process_info"]["native_jars"].Select(j => j.ToString()).ToArray(),
                 nativeDllExtractDir());
         }
     }
