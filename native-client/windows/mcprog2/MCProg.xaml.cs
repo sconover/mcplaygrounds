@@ -141,6 +141,8 @@ namespace mcprog2
             });
         }
 
+        private const string AppendLogEndpoint = "/appendlog";
+
         private void postAppLogToServerRegularly()
         {
             while(true)
@@ -155,31 +157,57 @@ namespace mcprog2
                     }
                     else
                     {
-                        string logLinesJoined = string.Join("\n", logLines) + "\n";
-                        httpPost(
-                            logLinesJoined, 
-                            allConfig.bootstrapConfig.BaseUri.ToString() + "/appendlog", 
+                        string logLinesJoined = string.Join("", logLines);
+                        bool success = httpPostUntilSuccess(
+                            logLinesJoined,
+                            allConfig.bootstrapConfig.AppendLogUri, 
                             allConfig.bootstrapConfig.BasicAuthUsername, 
-                            allConfig.bootstrapConfig.BasicAuthPassword);
+                            allConfig.bootstrapConfig.BasicAuthPassword,
+                            5000,
+                            120);
+                        if (success)
+                        {
+                            Console.WriteLine("posted " + logLines.Length + " log lines to '" + 
+                                allConfig.bootstrapConfig.AppendLogUri.ToString() + "'");
+                        }
                     }
 
                     Thread.Sleep(2000);
                 }
-                catch( Exception ex)
+                catch (Exception ex)
                 {
                     Trace.TraceError(ex.ToString());
                 }
             }
         }
 
-        private bool httpPost(string requestBody, string url, string username, string password)
+        private bool httpPostUntilSuccess(string requestBody, Uri uri, string basicAuthUsername, string basicAuthPassword, int sleepMsBetweenRetries, int maxRetries)
+        {
+            int i = 0;
+            bool success = false;
+            do
+            {
+                success = httpPost(requestBody, uri, basicAuthUsername, basicAuthPassword);
+                i++;
+                if (!success)
+                {
+                    Trace.TraceError("detected failure in http post to '', will retry in " + 
+                        sleepMsBetweenRetries + " ms. Tries so far: " + i +", try limit: " + maxRetries + ".");
+                    Thread.Sleep(sleepMsBetweenRetries);
+                }
+            } while (!success && i < maxRetries);
+
+            return success;
+        }
+
+        private bool httpPost(string requestBody, Uri uri, string basicAuthUsername, string basicAuthPassword)
         {
             HttpClient client = new HttpClient();
-            var credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes(string.Format("{0}:{1}", username, password)));
+            var credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes(string.Format("{0}:{1}", basicAuthUsername, basicAuthPassword)));
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
             HttpRequestMessage request = new HttpRequestMessage();
             request.Method = HttpMethod.Post;
-            request.RequestUri = new Uri(url);
+            request.RequestUri = uri;
 
             ASCIIEncoding encoding = new ASCIIEncoding();
             byte[] requestBodyBytes = encoding.GetBytes(requestBody);
@@ -193,7 +221,7 @@ namespace mcprog2
 
             if (!isOk)
             {
-                Trace.TraceError("http error when posting to '" + url + "': " + response.ToString());
+                Trace.TraceError("http error when posting to '" + uri.ToString() + "': " + response.ToString());
             }
 
             return isOk;

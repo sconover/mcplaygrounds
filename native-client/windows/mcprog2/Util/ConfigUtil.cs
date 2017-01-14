@@ -77,8 +77,8 @@ namespace mcprog2.Util
 
         public struct BootstrapConfig
         {
-            public Uri BaseUri;
             public Uri ConfigUri;
+            public Uri AppendLogUri;
             public string BasicAuthUsername;
             public string BasicAuthPassword;
         }
@@ -106,10 +106,10 @@ namespace mcprog2.Util
                 configUri = new Uri(configUriStr);
             }
 
-            Uri baseUri = new Uri((string)bootstrap["base_uri"]);
+            Uri appendLogUri = new Uri((string)bootstrap["base_uri"] + "/appendlog");
 
             BootstrapConfig b = new BootstrapConfig();
-            b.BaseUri = baseUri;
+            b.AppendLogUri = appendLogUri;
             b.ConfigUri = configUri;
             b.BasicAuthUsername = (string)bootstrap["basic_auth_username"];
             b.BasicAuthPassword = (string)bootstrap["basic_auth_password"];
