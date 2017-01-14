@@ -285,7 +285,7 @@ namespace mcprog2.Util
         /// The GetForegroundWindow function returns a handle to the 
         /// foreground window.
         [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
+        public static extern IntPtr GetForegroundWindow();
 
         [DllImport("user32.dll")]
         private static extern bool AttachThreadInput(uint idAttach,

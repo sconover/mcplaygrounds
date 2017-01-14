@@ -29,9 +29,10 @@ namespace mcprog2
         private UIProcessUtil.DockedWindowAndSubProcess dockedWindowAndSubProcess;
         private SynchronizationContext syncContext;
         private GlobalKeyHook f12ToggleKeyHook;
-        private bool focusToggle;
+        private bool focusedOnHostedAppWindow;
         private JObject config;
         private string lastBrowserUrlFromConfig;
+        private IntPtr browserWindowHandle;
 
         public MainWindow()
         {
@@ -77,6 +78,7 @@ namespace mcprog2
             updateWindowTitle();
 
             Task.Run(() => checkForNewBrowserUrlEverySeconds(10));
+            Task.Run(() => monitorWindowFocusAndAlignHighlight());
         }
 
         private void updateWindowTitle()
@@ -99,11 +101,35 @@ namespace mcprog2
                     }
                 } catch (Exception ex)
                 {
-                    log("while polling for new browser url, caught exception: " + ex.ToString());
+                    
                 }
 
                 Thread.Sleep(secondsBetweenChecks * 1000);
             }
+        }
+
+        private void monitorWindowFocusAndAlignHighlight()
+        {
+            while(true)
+            {
+                Thread.Sleep(200);
+                alignWindowFocusIfChangedIndependently();
+            }
+        }
+
+        private void alignWindowFocusIfChangedIndependently()
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                if (UIProcessUtil.GetForegroundWindow() == browserWindowHandle)
+                {
+                    highlightBrowserWindow();
+                }
+                else
+                {
+                    highlightAppWindow();
+                }
+            });
         }
 
         private void HostedAppWindow_Resize(object sender, EventArgs e)
@@ -214,19 +240,35 @@ namespace mcprog2
         private void focusOnHostedAppWindow()
         {
             log("focus on hosted app");
-            UIProcessUtil.focusOnWindowWithHandle(dockedWindowAndSubProcess.dockedWindowHandle);
+            IntPtr newFocusedWindowHandle = UIProcessUtil.focusOnWindowWithHandle(dockedWindowAndSubProcess.dockedWindowHandle);
+            log("focused window handle is now: " + newFocusedWindowHandle);
+            highlightAppWindow();
+        }
+
+        private void highlightAppWindow()
+        {
             HostedAppWindow.BorderBrush = new SolidColorBrush(Colors.Magenta);
             browserBorder.BorderBrush = new SolidColorBrush(Colors.Gray);
+            focusedOnHostedAppWindow = true;
         }
 
         private void focusOnBrowserWindow()
         {
             log("focus on browser");
-            UIProcessUtil.focusOnWindowWithHandle(new WindowInteropHelper(this).Handle);
+            IntPtr newFocusedWindowHandle = UIProcessUtil.focusOnWindowWithHandle(new WindowInteropHelper(this).Handle);
+            log("focused window handle is now: " + newFocusedWindowHandle);
             Browser.Focus();
             Keyboard.Focus(Browser);
             HostedAppWindow.BorderBrush = new SolidColorBrush(Colors.Gray);
             browserBorder.BorderBrush = new SolidColorBrush(Colors.Magenta);
+            browserWindowHandle = newFocusedWindowHandle;
+        }
+
+        private void highlightBrowserWindow()
+        {
+            HostedAppWindow.BorderBrush = new SolidColorBrush(Colors.Gray);
+            browserBorder.BorderBrush = new SolidColorBrush(Colors.Magenta);
+            focusedOnHostedAppWindow = false;
         }
 
         private void loadUrlInBrowser(string url)
@@ -240,15 +282,14 @@ namespace mcprog2
             if (dockedWindowAndSubProcess.dockedWindowHandle != IntPtr.Zero)
             {
                 
-                if (focusToggle)
-                {
-                    focusOnHostedAppWindow();
-                }
-                else
+                if (focusedOnHostedAppWindow)
                 {
                     focusOnBrowserWindow();
                 }
-                focusToggle = !focusToggle;
+                else
+                {
+                    focusOnHostedAppWindow();
+                }
             }
             else
             {
