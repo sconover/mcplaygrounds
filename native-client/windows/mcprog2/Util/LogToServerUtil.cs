@@ -23,39 +23,49 @@ namespace mcprog2.Util
             {
                 try
                 {
-                    string[] logLines = logLinesHolder.dequeueAll();
-
-                    if (logLines.Length == 0)
-                    {
-                        // note: this will have the effect of adding to log lines held by
-                        // the InMemoryTraceListener, in effect creating a heartbeat, which is 
-                        // intentional. 
-                        Trace.TraceInformation("Server log post: no log lines found, sleeping.");
-                    }
-                    else
-                    {
-                        string logLinesJoined = string.Join("", logLines);
-                        bool success = httpPostUntilSuccess(
-                            logLinesJoined,
-                            loggingUri,
-                            basicAuthUsername,
-                            basicAuthPassword,
-                            sleepMsBetweenRetriesAfterPostFailure,
-                            maxRetries);
-                        if (success)
-                        {
-                            // intentionally written to the console
-                            // (this would cause too much noise in the server log 
-                            // and is unimportant except for debugging in development)
-                            Console.WriteLine("posted " + logLines.Length + " log lines to '" + loggingUri.ToString() + "'");
-                        }
-                    }
-
+                    postLogLinesToServer(logLinesHolder, loggingUri, basicAuthUsername, basicAuthPassword, sleepMsBetweenRetriesAfterPostFailure, maxRetries);
                     Thread.Sleep(sleepMsBetweenLogPostAttempts);
                 }
                 catch (Exception ex)
                 {
                     Trace.TraceError(ex.ToString());
+                }
+            }
+        }
+
+        public static void postLogLinesToServer(
+            InMemoryTraceListener logLinesHolder,
+            Uri loggingUri,
+            string basicAuthUsername,
+            string basicAuthPassword,
+            int sleepMsBetweenRetriesAfterPostFailure,
+            int maxRetries)
+        {
+            string[] logLines = logLinesHolder.dequeueAll();
+
+            if (logLines.Length == 0)
+            {
+                // note: this will have the effect of adding to log lines held by
+                // the InMemoryTraceListener, in effect creating a heartbeat, which is 
+                // intentional. 
+                Trace.TraceInformation("Server log post: no log lines found, sleeping.");
+            }
+            else
+            {
+                string logLinesJoined = string.Join("", logLines);
+                bool success = httpPostUntilSuccess(
+                    logLinesJoined,
+                    loggingUri,
+                    basicAuthUsername,
+                    basicAuthPassword,
+                    sleepMsBetweenRetriesAfterPostFailure,
+                    maxRetries);
+                if (success)
+                {
+                    // intentionally written to the console
+                    // (this would cause too much noise in the server log 
+                    // and is unimportant except for debugging in development)
+                    Console.WriteLine("posted " + logLines.Length + " log lines to '" + loggingUri.ToString() + "'");
                 }
             }
         }

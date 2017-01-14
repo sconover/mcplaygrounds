@@ -106,6 +106,8 @@ namespace mcprog2.Util
                 configUri = new Uri(configUriStr);
             }
 
+            // NOTE: there MUST be agreement between this path, and the 
+            // append log endpoint defined in server code/config.
             Uri appendLogUri = new Uri((string)bootstrap["base_uri"] + "/appendlog");
 
             BootstrapConfig b = new BootstrapConfig();

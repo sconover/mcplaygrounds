@@ -55,6 +55,8 @@ namespace mcprog2
                 Trace.TraceError(ex.Message + "\ntrace: " + ex.StackTrace.Trim());
                 throw ex;
             };
+
+            Trace.TraceInformation("STARTING WINDOWS CLIENT");
         }
         
         private void HostedAppWindow_Loaded(object sender, RoutedEventArgs e)
@@ -340,8 +342,15 @@ namespace mcprog2
 
         private void shutdown()
         {
+            Trace.TraceInformation("SHUTTING DOWN WINDOWS CLIENT");
             killHostedApp();
             f12ToggleKeyHook.stopListeningForKeyPress();
+            LogToServerUtil.postLogLinesToServer(
+                inMemoryTraceListenerForHoldingLogLinesToSendToServer,
+                allConfig.bootstrapConfig.AppendLogUri,
+                allConfig.bootstrapConfig.BasicAuthUsername,
+                allConfig.bootstrapConfig.BasicAuthPassword,
+                1000, 1);
         }
 
         void log(string output)
