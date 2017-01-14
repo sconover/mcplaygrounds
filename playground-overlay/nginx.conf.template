@@ -30,6 +30,28 @@ location /${playground_name}/ {
     alias /home/ubuntu/playgrounds/${playground_name}/ipython-notebook-root/data/share/doc.html;
   }
 
+  # NOTE: there MUST be agreement between this path, and the "append log uri"
+  # path in any client code.
+  #
+  # NOTE: the client log file must exist and must be owned by www-data in order for this
+  # to function.
+  #
+  # This lua script causes the full request body to be read, and then appends
+  # the request body to the client log file.
+  #
+  # At present there is no log rollover scheme.
+  #
+  # Sample way to test via curl
+  # echo "a=b" | curl -X POST http://localhost/foo/appendlog -d @- -u foo:foofoo
+  location /${playground_name}/appendlog {
+    content_by_lua '
+      local f = assert(io.open("/home/ubuntu/playgrounds/${playground_name}/client.log", "a"))
+      ngx.req.read_body()
+      f:write(ngx.req.get_body_data())
+      f:close()
+    ';
+  }
+
   # GAME_BIN_PATHS_GO_HERE
 
 

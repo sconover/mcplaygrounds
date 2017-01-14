@@ -1,0 +1,492 @@
+ubuntu@ip-172-30-0-102:~$ curl -sSL https://onestep.circonus.com/install | sudo bash     -s --     --key REDACTED     --app REDACTED
+sudo: unable to resolve host ip-172-30-0-102
+Started Circonus One step Install on Sat Jan  7 18:11:51 UTC 2017
+Initializing cosi-install
+Parsing command line parameters
+Verifying COSI support for OS
+  LSB found, using '/etc/lsb-release' for OS detection.
+  Looking up Linux Ubuntu v14.04 x86_64.
+  Ubuntu 14.04 x86_64 supported!
+Checking Agent state
+Agent not found, installing Agent
+Downloading Agent package http://updates.circonus.net/node-agent/packages/nad-omnibus-20161025T175314Z-1.ubuntu.14.04_amd64.deb
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 11.8M  100 11.8M    0     0  1788k      0  0:00:06  0:00:06 --:--:-- 1998k
+Installing agent package /opt/circonus/cosi/cache/nad-omnibus-20161025T175314Z-1.ubuntu.14.04_amd64.deb
+Selecting previously unselected package nad-omnibus.
+(Reading database ... 75495 files and directories currently installed.)
+Preparing to unpack .../nad-omnibus-20161025T175314Z-1.ubuntu.14.04_amd64.deb ...
+Unpacking nad-omnibus (20161025T175314Z-1) ...
+Setting up nad-omnibus (20161025T175314Z-1) ...
+ Adding system startup for /etc/init.d/nad ...
+   /etc/rc0.d/K02nad -> ../init.d/nad
+   /etc/rc1.d/K02nad -> ../init.d/nad
+   /etc/rc6.d/K02nad -> ../init.d/nad
+   /etc/rc2.d/S98nad -> ../init.d/nad
+   /etc/rc3.d/S98nad -> ../init.d/nad
+   /etc/rc4.d/S98nad -> ../init.d/nad
+   /etc/rc5.d/S98nad -> ../init.d/nad
+ * Starting Circonus node agent daemon nad
+   ...done.
+Processing triggers for ureadahead (0.100.0-16) ...
+NAD installation found
+NAD process running PID:1586
+NAD URL reachable
+Agent running and responding
+
+Retrieving COSI utilities https://onestep.circonus.com/utils
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  308k  100  308k    0     0   629k      0 --:--:-- --:--:-- --:--:--  628k
+Unpacking COSI utilities into /opt/circonus/cosi
+Installing required node modules for COSI utilities
+Cleaning up after node module installation
+Verifying node version...
+Fixing cosi util shebangs...
+
+Saving COSI registration configuration /opt/circonus/cosi/etc/cosi.json
+
+Running COSI registration script
+
+Registration - creating checks and visuals
+
+Registration - setup
+==========
+Verify Circonus API access
+API key verified for account gpk
+==========
+Setting check target
+Reverse agent using ip-172-30-0-102
+==========
+Loading broker information
+Fetching broker list from Circonus
+Checking Custom configuration for default broker list
+Fetching default broker list from COSI
+==========
+Determine default broker for json
+Checking for custom broker settings
+Checking for enterprise brokers
+COSI default broker used 275
+==========
+Determine default broker for trap
+Checking for custom broker settings
+Checking for enterprise brokers
+COSI default broker used 35
+==========
+Checking StatsD port
+  StatsD disabled, skipping.
+==========
+Save registration configuration
+Registration configuration saved /opt/circonus/cosi/registration/setup-config.json
+==========
+Fetch available metrics from NAD
+Metrics loaded
+   diskstats has 286 metrics
+   fs has 72 metrics
+   cpu has 16 metrics
+   if has 6 metrics
+   vm has 56 metrics
+   disk has 100 metrics
+Total metrics: 536
+Saving available metrics
+Metrics saved /opt/circonus/cosi/registration/setup-metrics.json
+==========
+Fetching templates
+Adding check-system to fetch list
+Adding worksheet-system to fetch list
+Adding graph-diskstats to fetch list
+Adding graph-fs to fetch list
+Adding graph-cpu to fetch list
+Adding graph-if to fetch list
+Adding graph-vm to fetch list
+Adding graph-disk to fetch list
+---
+Fetching template(s) for: check-system, worksheet-system, graph-diskstats, graph-fs, graph-cpu, graph-if, graph-vm, graph-disk
+---
+Saved template: /opt/circonus/cosi/registration/template-check-system.json
+Saved template: /opt/circonus/cosi/registration/template-worksheet-system.json
+WARN Skipping graph-diskstats, no COSI template available.
+Saved template: /opt/circonus/cosi/registration/template-graph-fs.json
+Saved template: /opt/circonus/cosi/registration/template-graph-cpu.json
+Saved template: /opt/circonus/cosi/registration/template-graph-if.json
+Saved template: /opt/circonus/cosi/registration/template-graph-vm.json
+Saved template: /opt/circonus/cosi/registration/template-graph-disk.json
+Checked 8, fetched 7, warnings 1, errors 0
+
+Registration - checks
+==========
+Configuring system check
+  Applying custom config options and interpolating templates
+  Interpolating display_name {{=cosi.host_name}} cosi/system
+  Interpolating target {{=cosi.host_target}}
+  Saved configuration /opt/circonus/cosi/registration/config-check-system.json
+==========
+Creating system check
+  Valid check config
+  Sending check configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-check-system.json
+  Check created: https://gpk.circonus.com/checks/207895
+==========
+Finalizing system check
+  Creating NAD Reverse configuration
+  Saved NAD Reverse configuration /opt/circonus/cosi/etc/circonus-nadreversesh
+
+Registration - graphs
+==========
+Loading check meta data
+Loaded check meta data
+==========
+Loading available metrics
+  diskstats has 286 metrics
+  fs has 72 metrics
+  cpu has 16 metrics
+  if has 6 metrics
+  vm has 56 metrics
+  disk has 100 metrics
+  Total metrics: 536
+Metrics loaded
+==========
+Identifying graph templates
+  Found graph-cpu template-graph-cpu.json
+  Found graph-disk template-graph-disk.json
+  Found graph-fs template-graph-fs.json
+  Found graph-if template-graph-if.json
+  Found graph-vm template-graph-vm.json
+==========
+Configuring graphs for cpu
+  Using template /opt/circonus/cosi/registration/template-graph-cpu.json
+  Creating graph 0 config for cpu
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} CPU Utilization
+  Interpolating description CPU utilization
+  Saved config /opt/circonus/cosi/registration/config-graph-cpu-0.json
+Configuring graphs for disk
+  Using template /opt/circonus/cosi/registration/template-graph-disk.json
+  Creating graph 0 config for disk.xvda
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} {{=cosi.graph_item}} Disk IO
+  Interpolating description Disk IO number of read/write and bytes read/written.
+  Saved config /opt/circonus/cosi/registration/config-graph-disk-0-xvda.json
+Configuring graphs for fs
+  Using template /opt/circonus/cosi/registration/template-graph-fs.json
+  Creating graph 0 config for fs./run
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} {{=cosi.graph_item}} %Used
+  Interpolating description Filesystem space used and inodes used.
+  Saved config /opt/circonus/cosi/registration/config-graph-fs-0-_run.json
+  Creating graph 0 config for fs./
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} {{=cosi.graph_item}} %Used
+  Interpolating description Filesystem space used and inodes used.
+  Saved config /opt/circonus/cosi/registration/config-graph-fs-0-_.json
+  Creating graph 0 config for fs./sys/fs/cgroup
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} {{=cosi.graph_item}} %Used
+  Interpolating description Filesystem space used and inodes used.
+  Saved config /opt/circonus/cosi/registration/config-graph-fs-0-_sys_fs_cgroup.json
+  Creating graph 0 config for fs./run/lock
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} {{=cosi.graph_item}} %Used
+  Interpolating description Filesystem space used and inodes used.
+  Saved config /opt/circonus/cosi/registration/config-graph-fs-0-_run_lock.json
+  Creating graph 0 config for fs./run/shm
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} {{=cosi.graph_item}} %Used
+  Interpolating description Filesystem space used and inodes used.
+  Saved config /opt/circonus/cosi/registration/config-graph-fs-0-_run_shm.json
+  Creating graph 0 config for fs./run/user
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} {{=cosi.graph_item}} %Used
+  Interpolating description Filesystem space used and inodes used.
+  Saved config /opt/circonus/cosi/registration/config-graph-fs-0-_run_user.json
+Configuring graphs for if
+  Using template /opt/circonus/cosi/registration/template-graph-if.json
+  Creating graph 0 config for if.eth0
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} {{=cosi.graph_item}} bps
+  Interpolating description Network interface tx/rx bps for {{=cosi.graph_item}}
+  Saved config /opt/circonus/cosi/registration/config-graph-if-0-eth0.json
+  Creating graph 1 config for if.eth0
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} {{=cosi.graph_item}} Errors
+  Interpolating description Network interface errors for {{=cosi.graph_item}}
+  Saved config /opt/circonus/cosi/registration/config-graph-if-1-eth0.json
+Configuring graphs for vm
+  Using template /opt/circonus/cosi/registration/template-graph-vm.json
+  Creating graph 0 config for vm
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} VM RAM Usage
+  Interpolating description Memory Utilization
+  Saved config /opt/circonus/cosi/registration/config-graph-vm-0.json
+  Creating graph 1 config for vm
+  Applying custom config options and interpolating templates
+  Interpolating title {{=cosi.host_name}} VM Swap Usage
+  Interpolating description Swap Utilization
+  Saved config /opt/circonus/cosi/registration/config-graph-vm-1.json
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-cpu-0.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-cpu-0.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/3115e962-8874-e282-acc9-9b356d103115
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-disk-0-xvda.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-disk-0-xvda.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/ba77af16-9c9b-4696-e052-c45b566e83c5
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-fs-0-_.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-fs-0-_.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/2018b5ff-7f7e-ca9a-c273-b44e05696d56
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-fs-0-_run.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-fs-0-_run.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/013b4292-9980-6d07-e0aa-b96a702865b2
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-fs-0-_run_lock.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-fs-0-_run_lock.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/c5243703-72ea-4f09-be79-825e0d00b96a
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-fs-0-_run_shm.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-fs-0-_run_shm.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/b7ef53f8-b849-cc37-da12-8d1cd8b883ad
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-fs-0-_run_user.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-fs-0-_run_user.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/4e8431d9-a2b8-49cd-e551-ad7d2a20d9ae
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-fs-0-_sys_fs_cgroup.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-fs-0-_sys_fs_cgroup.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/9d3b7125-8c55-ee0e-ab0a-eac5a378743e
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-if-0-eth0.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-if-0-eth0.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/240795d9-12c3-4037-d992-e0ed433b2342
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-if-1-eth0.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-if-1-eth0.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/53cd4155-866f-4184-e164-c095232dad0e
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-vm-0.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-vm-0.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/6298c065-a964-4382-c19a-82a817193c44
+==========
+Creating graph /opt/circonus/cosi/registration/config-graph-vm-1.json
+  Sending graph configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-graph-vm-1.json
+  Graph created: https://gpk.circonus.com/trending/graphs/view/0dc6f4b6-da59-c375-a5f2-d6817870bc08
+
+Registration - worksheets
+==========
+Configuring Worksheets
+  Applying custom config options and interpolating templates
+  Interpolating description COSI worksheet for {{=cosi.host_name}}
+  Interpolating title COSI {{=cosi.host_name}} {{? cosi.host_target !== cosi.host_hostname}}{{=cosi.host_target}}{{?}}
+  Saved configuration /opt/circonus/cosi/registration/config-worksheet-system.json
+==========
+Creating Worksheets
+  Valid worksheet config
+  Sending worksheet configuration to Circonus API
+  Saving registration /opt/circonus/cosi/registration/registration-worksheet-system.json
+  Worksheet created: https://gpk.circonus.com/trending/worksheets/628d1d21-7edf-cb15-cf1c-ae26fe91b1d6
+
+Registration - dashboards
+==========
+Loading check meta data
+Loaded check meta data
+==========
+Identifying dashboard templates
+Loaded 0 template(s)
+WARN No dashboard templates found
+
+SKIPPING dasbhoards, none found to register
+==========
+Updating system check
+  Registration found using /opt/circonus/cosi/registration/registration-check-system.json
+Collecting required metrics from registered visuals
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-cpu-0.json
+    Adding required metric: cpu`idle
+    Adding required metric: cpu`intr
+    Adding required metric: cpu`kernel
+    Adding required metric: cpu`user
+    Adding required metric: cpu`wait_io
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-disk-0-xvda.json
+    Adding required metric: disk`xvda`reads
+    Adding required metric: disk`xvda`writes
+    Adding required metric: disk`xvda`nread
+    Adding required metric: disk`xvda`nwritten
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-fs-0-_.json
+    Adding required metric: fs`/`df_used_percent
+    Adding required metric: fs`/`df_used_inode_percent
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-fs-0-_run.json
+    Adding required metric: fs`/run`df_used_percent
+    Adding required metric: fs`/run`df_used_inode_percent
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-fs-0-_run_lock.json
+    Adding required metric: fs`/run/lock`df_used_percent
+    Adding required metric: fs`/run/lock`df_used_inode_percent
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-fs-0-_run_shm.json
+    Adding required metric: fs`/run/shm`df_used_percent
+    Adding required metric: fs`/run/shm`df_used_inode_percent
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-fs-0-_run_user.json
+    Adding required metric: fs`/run/user`df_used_percent
+    Adding required metric: fs`/run/user`df_used_inode_percent
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-fs-0-_sys_fs_cgroup.json
+    Adding required metric: fs`/sys/fs/cgroup`df_used_percent
+    Adding required metric: fs`/sys/fs/cgroup`df_used_inode_percent
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-if-0-eth0.json
+    Adding required metric: if`eth0`in_bytes
+    Adding required metric: if`eth0`out_bytes
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-if-1-eth0.json
+    Adding required metric: if`eth0`in_errors
+    Adding required metric: if`eth0`out_errors
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-vm-0.json
+    Adding required metric: vm`memory`used
+    Adding required metric: vm`memory`free
+  Loading required metrics from /opt/circonus/cosi/registration/registration-graph-vm-1.json
+    Adding required metric: vm`swap`used
+    Adding required metric: vm`swap`free
+  Checking metrics from visuals against currently active metrics
+    Found new metric cpu`idle
+    Found new metric cpu`intr
+    Found new metric cpu`kernel
+    Found new metric cpu`user
+    Found new metric cpu`wait_io
+    Found new metric disk`xvda`reads
+    Found new metric disk`xvda`writes
+    Found new metric disk`xvda`nread
+    Found new metric disk`xvda`nwritten
+    Found new metric fs`/`df_used_percent
+    Found new metric fs`/`df_used_inode_percent
+    Found new metric fs`/run`df_used_percent
+    Found new metric fs`/run`df_used_inode_percent
+    Found new metric fs`/run/lock`df_used_percent
+    Found new metric fs`/run/lock`df_used_inode_percent
+    Found new metric fs`/run/shm`df_used_percent
+    Found new metric fs`/run/shm`df_used_inode_percent
+    Found new metric fs`/run/user`df_used_percent
+    Found new metric fs`/run/user`df_used_inode_percent
+    Found new metric fs`/sys/fs/cgroup`df_used_percent
+    Found new metric fs`/sys/fs/cgroup`df_used_inode_percent
+    Found new metric if`eth0`in_bytes
+    Found new metric if`eth0`out_bytes
+    Found new metric if`eth0`in_errors
+    Found new metric if`eth0`out_errors
+    Found new metric vm`memory`used
+    Found new metric vm`memory`free
+    Found new metric vm`swap`used
+    Found new metric vm`swap`free
+  Updating system check new metrics found
+  Saved updated registration to file /opt/circonus/cosi/registration/registration-check-system.json
+
+
+Enabling reverse mode for agent
+Checking for NAD reverse config
+Found /opt/circonus/cosi/etc/circonus-nadreversesh
+Loading NAD reverse conf
+ * Stopping Circonus node agent daemon nad
+   ...done.
+ * Starting Circonus node agent daemon nad
+   ...done.
+
+Creating rulesets if any ruleset configurations were pre-installed.
+running: '/opt/circonus/cosi/bin/cosi rulesets create'
+cosi-rulesets-create v0.10.2
+
+--- Graphs created ---
+running: '/opt/circonus/cosi/bin/cosi graph list --long'
+cosi-graph-list v0.10.2
+================
+Graph ID       : graph-cpu-0
+Graph Title    : ip-172-30-0-102 CPU Utilization
+Description    : CPU utilization
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/3115e962-8874-e282-acc9-9b356d103115
+================
+Graph ID       : graph-disk-0-xvda
+Graph Title    : ip-172-30-0-102 xvda Disk IO
+Description    : Disk IO number of read/write and bytes read/written.
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/ba77af16-9c9b-4696-e052-c45b566e83c5
+================
+Graph ID       : graph-fs-0-_
+Graph Title    : ip-172-30-0-102 / %Used
+Description    : Filesystem space used and inodes used.
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/2018b5ff-7f7e-ca9a-c273-b44e05696d56
+================
+Graph ID       : graph-fs-0-_run
+Graph Title    : ip-172-30-0-102 /run %Used
+Description    : Filesystem space used and inodes used.
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/013b4292-9980-6d07-e0aa-b96a702865b2
+================
+Graph ID       : graph-fs-0-_run_lock
+Graph Title    : ip-172-30-0-102 /run/lock %Used
+Description    : Filesystem space used and inodes used.
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/c5243703-72ea-4f09-be79-825e0d00b96a
+================
+Graph ID       : graph-fs-0-_run_shm
+Graph Title    : ip-172-30-0-102 /run/shm %Used
+Description    : Filesystem space used and inodes used.
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/b7ef53f8-b849-cc37-da12-8d1cd8b883ad
+================
+Graph ID       : graph-fs-0-_run_user
+Graph Title    : ip-172-30-0-102 /run/user %Used
+Description    : Filesystem space used and inodes used.
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/4e8431d9-a2b8-49cd-e551-ad7d2a20d9ae
+================
+Graph ID       : graph-fs-0-_sys_fs_cgroup
+Graph Title    : ip-172-30-0-102 /sys/fs/cgroup %Used
+Description    : Filesystem space used and inodes used.
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/9d3b7125-8c55-ee0e-ab0a-eac5a378743e
+================
+Graph ID       : graph-if-0-eth0
+Graph Title    : ip-172-30-0-102 eth0 bps
+Description    : Network interface tx/rx bps for eth0
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/240795d9-12c3-4037-d992-e0ed433b2342
+================
+Graph ID       : graph-if-1-eth0
+Graph Title    : ip-172-30-0-102 eth0 Errors
+Description    : Network interface errors for eth0
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/53cd4155-866f-4184-e164-c095232dad0e
+================
+Graph ID       : graph-vm-0
+Graph Title    : ip-172-30-0-102 VM RAM Usage
+Description    : Memory Utilization
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/6298c065-a964-4382-c19a-82a817193c44
+================
+Graph ID       : graph-vm-1
+Graph Title    : ip-172-30-0-102 VM Swap Usage
+Description    : Swap Utilization
+Graph URL      : https://gpk.circonus.com/trending/graphs/view/0dc6f4b6-da59-c375-a5f2-d6817870bc08
+
+--- Check created ---
+running: '/opt/circonus/cosi/bin/cosi check list --long --verify'
+cosi-check-list v0.10.2
+================
+Check ID       : check-system
+Check Name     : ip-172-30-0-102 cosi/system
+Check Type     : json:nad
+Active metrics : 29
+Last modified  : Sat Jan 07 2017 18:12:14 GMT+0000 (UTC)
+Check status   : OK
+Check URL      : https://gpk.circonus.com/checks/207895
+
+--- Worksheet created ---
+running: '/opt/circonus/cosi/bin/cosi worksheet list --long'
+cosi-worksheet-list v0.10.2
+================
+Worksheet ID   : worksheet-system
+Worksheet Title: COSI ip-172-30-0-102 ip-172-30-0-102
+Description    : COSI worksheet for ip-172-30-0-102
+Worksheet URL  : https://gpk.circonus.com/trending/worksheets/628d1d21-7edf-cb15-cf1c-ae26fe91b1d6
+
+To see any of these lists again in the future run, /opt/circonus/cosi/bin/cosi (graph|check|worksheet) list --long
+
+Completed Circonus One step Install on Sat Jan  7 18:12:18 UTC 2017
+

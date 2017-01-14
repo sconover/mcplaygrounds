@@ -253,6 +253,15 @@ def reset_basic_auth_password(playground_name, password):
         password
     ))
 
+def prepare_client_log(playground_name):
+    ssh_exec_all([
+        # Create a file for client logging that's owned by (and thus writeable by) the
+        # same unix user that nginx workers run as.
+        # There must be agreement between this path and the path in the playground's nginx.conf.
+        "touch {}/client.log".format(pdir(playground_name)),
+        "sudo chown www-data {}/client.log".format(pdir(playground_name))
+    ])
+
 def reload_nginx():
     ssh_exec("sudo /etc/init.d/nginx reload")
 
@@ -289,6 +298,7 @@ def overlay(args):
     clean_remote_dirs(args.playground_name)
     upload_staged_files(args.playground_name)
     reset_basic_auth_password(args.playground_name, playground_config.web_password)
+    prepare_client_log(args.playground_name)
     reload_nginx()
     write_crontab(args)
     write_ipython_notebook_html()
@@ -328,6 +338,9 @@ def tmux_kill(session_name):
     else:
         print "tmux session '{}' not found, doing nothing.".format(session_name)
 
+def kill_if_listening_on_port(port_number):
+    ssh_exec("fuser -vk {}/tcp || true".format(port_number))
+
 def tmux_start(session_name):
     if does_tmux_session_exist(session_name):
         print "tmux session '{}' found, doing nothing.".format(session_name)
@@ -344,6 +357,7 @@ def does_tmux_session_exist(session_name):
 
 def stop_ipython(args):
     tmux_kill(args.playground_name + "-py")
+    kill_if_listening_on_port()
 add_simple_subparser(stop_ipython)
 
 def stop_minecraft(args):
@@ -736,9 +750,8 @@ def tmux_send_command(playground_name, command):
 
 def write_crontab(args):
     crontab_lines = [
-        "55 2 * * * sudo shutdown -h now",
-        "55 8 * * * sudo shutdown -h now"
-    ] # if instance is still running at 6:55pm or 12:55pm PT, shut it down.
+        "55 10 * * * sudo shutdown -h now"
+    ] # if instance is still running at 2:55am PT, shut it down.
     crontab_lines.append("@reboot /usr/bin/tmux new-session -s dstat -d '/usr/bin/dstat --time --load --mem --net  --io --swap --page --sys'")
     # crontab_lines.append("@reboot /usr/bin/tmux new-session -s mapcrafter -d 'while :; do nice -n 20 /usr/bin/mapcrafter -c mapcrafter.conf; sleep 30; done'")
     all_config = get_all_playground_config()
