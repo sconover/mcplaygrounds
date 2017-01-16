@@ -806,14 +806,33 @@ def write_rsyslog_conf(args):
         # facility option (local6) was being ignored.
         rsyslog_conf_lines.extend([
             "",
+            "# monitor {} 's client.log and send to local6 facility".format(playground_name),
             "$InputFileName /home/ubuntu/playgrounds/{}/client.log".format(playground_name),
             "$InputFileTag {}-client:".format(playground_name),
             "$InputFileStateFile {}-client-log-state".format(playground_name),
             "$InputFileSeverity info",
             "$InputFileFacility local6",
-            "$InputFilePollInterval 1",
-            "$InputRunFileMonitor"
+            "$InputRunFileMonitor",
+            "$InputFilePollInterval 1"
         ])
+
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    loggly = [
+        "",
+        "# send local6 logging to loggly",
+        "$WorkDirectory /var/spool/rsyslog # where to place spool files",
+        "$ActionQueueFileName fwdRule1     # unique name prefix for spool files",
+        "$ActionQueueMaxDiskSpace 1g       # 1gb space limit (use as much as possible)",
+        "$ActionQueueSaveOnShutdown on     # save messages to disk on shutdown",
+        "$ActionQueueType LinkedList       # run asynchronously",
+        "$ActionResumeRetryCount -1        # infinite retries if host is down",
+        "",
+        'template(name="LogglyFormat" type="string" string="<%pri%>%protocol-version% %timestamp:::date-rfc3339% %HOSTNAME% %app-name% %procid% %msgid% [{}@41058] %msg%\\n")'.format(playground_config.loggly_token),
+        "",
+        'local6.* action(type="omfwd" protocol="tcp" target="logs-01.loggly.com" port="514" template="LogglyFormat")'
+    ]
+    rsyslog_conf_lines.extend(loggly)
+
     f = open("/tmp/90-playground-rsyslog.conf", 'w')
     f.write("\n".join(rsyslog_conf_lines) + "\n")
     f.close()

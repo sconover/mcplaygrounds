@@ -22,6 +22,7 @@ class PlaygroundConfig(BaseSettingsClass):
         self.usb_stick_howto_url = None
         self.usb_stick_dir = None
         self.minecraft_reference_launcher_profile_json_file = None
+        self.loggly_token = None
         self.personal_x_1 = None
         self.personal_z_1 = None
         self.personal_x_2 = None
