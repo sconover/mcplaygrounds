@@ -349,7 +349,10 @@ create_parser.add_argument('playground_config_file', help='json config for playg
 create_parser.set_defaults(func=create)
 
 def tmux_kill_command(session_name):
-    return "tmux kill-session -t " + session_name
+    # tmux sends sighup (weird), which I believe is responsible for java sometimes
+    # outliving its tmux session parent.
+    # so, send sigterm to children of session, before running tmux kill-session
+    return "tmux list-panes -s -F '#{pane_pid}' -t " + session_name + " | xargs -r kill; tmux kill-session -t " + session_name + " || true"
 
 def tmux_kill(session_name):
     if does_tmux_session_exist(session_name):
@@ -790,7 +793,7 @@ def tmux_playground_start_command_no_cd(playground_name, tmux_session_suffix, co
                 playground_name + "-" + tmux_session_suffix,
                 command)
 
-def write_tmux_session_restart_script(playground_name, tmux_session_suffix, start_command, relative_path):
+def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_session_suffix, start_command, relative_path):
     session_name = playground_name + "-" + tmux_session_suffix
     write_playground_bash_script_to_staging_dir([
         tmux_kill_bash_fragment(session_name),
@@ -806,7 +809,7 @@ def stage_start_bin(playground_config):
             "exec java -Xmx8g -Xms1g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -Xmn512m -XX:ParallelGCThreads=4 -jar sponge-minecraft-server.jar run"
         ], "/start-bin/start_minecraft_server")
 
-        write_tmux_session_restart_script(
+        write_tmux_session_restart_script_to_staging_dir(
             playground_config.playground_name,
             "mc",
             "/home/ubuntu/{}/start-bin/start_minecraft_server".format(pdir(playground_config.playground_name)),
@@ -820,10 +823,10 @@ def stage_start_bin(playground_config):
                 "while ! nc -q 1 localhost " + str(playground_config.minecraft_server_port) + " </dev/null; do sleep 1; echo waiting; done && echo started && " + minecraft_console_commands
             ], "/start-bin/run_minecraft_startup_console_commands")
 
-            write_tmux_session_restart_script(
+            write_tmux_session_restart_script_to_staging_dir(
                 playground_config.playground_name,
                 "mc-init",
-                "/home/ubuntu/{}/start-bin/start_minecraft_server".format(pdir(playground_config.playground_name)),
+                "/home/ubuntu/{}/start-bin/run_minecraft_startup_console_commands".format(pdir(playground_config.playground_name)),
                 "/tmux-bin/tmux_run_minecraft_startup_console_commands")
 
     if playground_config.ipython_notebook_server_http_port:
@@ -832,7 +835,7 @@ def stage_start_bin(playground_config):
             "exec ../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py --ipython-dir=."
         ], "/start-bin/start_ipython_notebook_server")
 
-        write_tmux_session_restart_script(
+        write_tmux_session_restart_script_to_staging_dir(
             playground_config.playground_name,
             "py",
             "/home/ubuntu/{}/start-bin/start_ipython_notebook_server".format(pdir(playground_config.playground_name)),
@@ -844,18 +847,13 @@ def write_crontab(args):
     ] # if instance is still running at 2:55am PT, shut it down.
     crontab_lines.append("@reboot /usr/bin/tmux new-session -s dstat -d '/usr/bin/dstat --time --load --mem --net  --io --swap --page --sys'")
     # crontab_lines.append("@reboot /usr/bin/tmux new-session -s mapcrafter -d 'while :; do nice -n 20 /usr/bin/mapcrafter -c mapcrafter.conf; sleep 30; done'")
-    all_config = get_all_playground_config()
-    for playground_name in all_config:
-        if all_config[playground_name].minecraft_server_port:
-            crontab_lines.append(
-                at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc", "java -Xmx8g -Xms1g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -Xmn512m -XX:ParallelGCThreads=4 -jar sponge-minecraft-server.jar run"))
-            if all_config[playground_name].minecraft_startup_commands and len(all_config[playground_name].minecraft_startup_commands) > 0:
-                minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_name, c), all_config[playground_name].minecraft_startup_commands))
-                crontab_lines.append(
-                    at_reboot_tmux_crontab_line(playground_name, "minecraft-server", "mc-init", "while ! nc -q 1 localhost " + str(all_config[playground_name].minecraft_server_port) + " </dev/null; do sleep 1; echo waiting; done && echo started && " + minecraft_console_commands))
-        if all_config[playground_name].ipython_notebook_server_http_port:
-            crontab_lines.append(
-                at_reboot_tmux_crontab_line(playground_name, "ipython-notebook-root", "py", "../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py    --ipython-dir=."))
+
+    # get all executable files in all playground tmux-bin dirs, absolute paths
+    tmux_start_scripts = ssh_get("find playgrounds/*/tmux-bin -type f -executable | xargs -L 1 readlink -f").strip().split("\n")
+    at_reboot_tmux_sessions = map(lambda path: "@reboot " + path, tmux_start_scripts)
+
+    crontab_lines.extend(at_reboot_tmux_sessions)
+
     f = open("/tmp/crontab", 'w')
     f.write("\n".join(crontab_lines) + "\n")
     f.close()
