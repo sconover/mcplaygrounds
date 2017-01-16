@@ -301,6 +301,7 @@ def overlay(args):
     prepare_client_log(args.playground_name)
     reload_nginx()
     write_crontab(args)
+    write_rsyslog_conf(args)
     write_ipython_notebook_html()
 overlay_parser = subparsers.add_parser("overlay", help='{} overlay')
 overlay_parser.add_argument('playground_config_file', help='json config for playgrounds')
@@ -792,6 +793,35 @@ def write_mapcrafter_conf(args):
     f.close()
     scp_r("/tmp/mapcrafter.conf", "mapcrafter.conf")
 add_simple_subparser(write_mapcrafter_conf)
+
+def write_rsyslog_conf(args):
+    rsyslog_conf_lines = [
+        "local6.* /var/log/client.log",
+        "",
+        "$ModLoad imfile"
+    ]
+    all_config = get_all_playground_config()
+    for playground_name in all_config:
+        # I tried using the "modern" config, but it's buggy - the
+        # facility option (local6) was being ignored.
+        rsyslog_conf_lines.extend([
+            "",
+            "$InputFileName /home/ubuntu/playgrounds/{}/client.log".format(playground_name),
+            "$InputFileTag {}-client:".format(playground_name),
+            "$InputFileStateFile {}-client-log-state".format(playground_name),
+            "$InputFileSeverity info",
+            "$InputFileFacility local6",
+            "$InputFilePollInterval 1",
+            "$InputRunFileMonitor"
+        ])
+    f = open("/tmp/90-playground-rsyslog.conf", 'w')
+    f.write("\n".join(rsyslog_conf_lines) + "\n")
+    f.close()
+    scp_r("/tmp/90-playground-rsyslog.conf", "/tmp/90-playground-rsyslog.conf")
+    ssh_exec_all([
+        "sudo mv /tmp/90-playground-rsyslog.conf /etc/rsyslog.d/90-playground-rsyslog.conf",
+        "sudo pkill rsyslogd" # init.d force-reload, restart, stop, etc seem to do nothing. ugh.
+    ])
 
 def write_ipython_notebook_html():
     scp_r("template/notebook.html.template", ".python-virtualenv/local/lib/python2.7/site-packages/IPython/html/templates/notebook.html")
