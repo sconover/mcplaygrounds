@@ -106,13 +106,16 @@ def bash_fragment_teleport(teleport_action):
         ""
     ]).format(**locals())
 
-def nginx_location_directive_for_executable(playground_name, url_path, executable_relative_path, redirect_url_relative_path):
+def nginx_location_directive_for_executable(playground_name, url_path, bin_path, redirect_url_relative_path):
+    cmd = "sudo -u ubuntu " + bin_path
+    redirect = playground_name + redirect_url_relative_path
     return "\n".join([
         "",
         "  location " + url_path + " {",
-        "    content_by_lua 'os.execute(\"sudo -u ubuntu /home/ubuntu/playgrounds/" +
-            playground_name + "/" + executable_relative_path + "\");return ngx.redirect(\"/" +
-            playground_name + redirect_url_relative_path + "\")';",
+        "    content_by_lua 'ngx.log(ngx.STDERR, \"will run: " + cmd +
+            " then will redirect to: " + redirect + "\");os.execute(\"" +
+            cmd + "\");return ngx.redirect(\"/" +
+            redirect + "\")';",
         "  }",
         ""
     ])
@@ -174,24 +177,42 @@ def create_game_commands(playground_config, nginx_conf_file, index_html_file):
         write_executable_file(teleport_bash, path)
         all_game_bin_script_file_names.append(file_name)
 
+def get_bin_files_on_server_and_staged(playground_config):
+    bin_files_from_server = ssh_get("find {} -type f -executable | xargs -L 1 readlink -f".format(pdir(playground_config.playground_name))).strip().split("\n")
+
+    bin_files_from_stage_dir = []
+    for dirpath, dnames, fnames in os.walk(OVERLAY_STAGING_DIR + "/tmux-bin"):
+        for f in fnames:
+            bin_files_from_stage_dir.append(dirpath + "/" + f)
+
+    bin_files_from_stage_dir_as_will_be_on_server = \
+        map(lambda path: path.replace(OVERLAY_STAGING_DIR, "/home/ubuntu/" + pdir(playground_config.playground_name)), bin_files_from_stage_dir)
+
+    all_absolute_bin_paths = []
+    all_absolute_bin_paths.extend(bin_files_from_server)
+    all_absolute_bin_paths.extend(bin_files_from_stage_dir_as_will_be_on_server)
+    all_absolute_bin_paths = sorted(list(set(all_absolute_bin_paths)))
+    return all_absolute_bin_paths
+
+def create_nginx_location_directives_for_bin_files(playground_config, absolute_bin_paths, nginx_conf_file, index_html_file):
     url_paths = []
 
     nginx_location_directives = ""
-    for game_bin_script_file_name in all_game_bin_script_file_names:
-        url_path = "/" + playground_config.playground_name + "/" + game_bin_script_file_name
+    for bin_path in absolute_bin_paths:
+        url_path = "/" + playground_config.playground_name + "/" + bin_path.replace("/home/ubuntu/{}/".format(pdir(playground_config.playground_name)), "").replace("/", "__").replace("-", "_")
         url_paths.append(url_path)
         location_directive = \
             nginx_location_directive_for_executable(
                 playground_config.playground_name,
                 url_path,
-                "game-bin/" + game_bin_script_file_name,
+                bin_path,
                 "#game-bin")
         nginx_location_directives += location_directive
 
     rewrite_file_with_replace(nginx_conf_file, "# GAME_BIN_PATHS_GO_HERE", nginx_location_directives)
 
-    game_bin_items = map(lambda u: "<li><a href=\"" + u + "\">" + u + "</a></li>", url_paths)
-    rewrite_file_with_replace(index_html_file, "<!-- GAME_BIN_PATHS_GO_HERE -->", "<ul>\n" + "\n".join(game_bin_items) + "\n</ul>")
+    bin_items = map(lambda u: "<li><a href=\"" + u + "\">" + u + "</a></li>", url_paths)
+    rewrite_file_with_replace(index_html_file, "<!-- GAME_BIN_PATHS_GO_HERE -->", "<ul>\n" + "\n".join(bin_items) + "\n</ul>")
 
 def evaluate_and_replace_templates(root_dir, template_vars):
     for dirpath, dnames, fnames in os.walk(root_dir):
@@ -216,6 +237,11 @@ def stage_overlay_files(playground_config):
     validate_files(OVERLAY_STAGING_DIR)
     create_game_commands(playground_config, OVERLAY_STAGING_DIR + "/nginx.conf", OVERLAY_STAGING_DIR + "/webroot/index.html")
     stage_start_bin(playground_config)
+    create_nginx_location_directives_for_bin_files(
+        playground_config,
+        get_bin_files_on_server_and_staged(playground_config),
+        OVERLAY_STAGING_DIR + "/nginx.conf",
+        OVERLAY_STAGING_DIR + "/webroot/index.html")
 
 def validate_files(root_dir):
     validator = jsonschema.Draft3Validator(NATIVE_CLIENT_CONFIG_SCHEMA)
