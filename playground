@@ -777,7 +777,7 @@ def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_sessi
 def stage_start_bin(playground_config):
     if playground_config.minecraft_server_port:
         write_playground_bash_script_to_staging_dir([
-            "cd {}/minecraft-server".format(pdir(playground_config.playground_name)),
+            "cd /home/ubuntu/{}/minecraft-server".format(pdir(playground_config.playground_name)),
             "exec java -Xmx8g -Xms1g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -Xmn512m -XX:ParallelGCThreads=4 -jar sponge-minecraft-server.jar run"
         ], "/bin/start/start_minecraft_server")
 
@@ -791,7 +791,7 @@ def stage_start_bin(playground_config):
             minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_config.playground_name, c), playground_config.minecraft_startup_commands))
 
             write_playground_bash_script_to_staging_dir([
-                "cd {}/minecraft-server".format(pdir(playground_config.playground_name)),
+                "cd /home/ubuntu/{}/minecraft-server".format(pdir(playground_config.playground_name)),
                 "while ! nc -q 1 localhost " + str(playground_config.minecraft_server_port) + " </dev/null; do sleep 1; echo waiting; done && echo started && " + minecraft_console_commands
             ], "/bin/start/run_minecraft_startup_console_commands")
 
@@ -803,7 +803,7 @@ def stage_start_bin(playground_config):
 
     if playground_config.ipython_notebook_server_http_port:
         write_playground_bash_script_to_staging_dir([
-            "cd {}/ipython-notebook-root".format(pdir(playground_config.playground_name)),
+            "cd /home/ubuntu/{}/ipython-notebook-root".format(pdir(playground_config.playground_name)),
             "exec ../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py --ipython-dir=."
         ], "/bin/start/start_ipython_notebook_server")
 
