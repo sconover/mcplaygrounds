@@ -853,32 +853,42 @@ def write_mapcrafter_conf(args):
     scp_r("/tmp/mapcrafter.conf", "mapcrafter.conf")
 add_simple_subparser(write_mapcrafter_conf)
 
+def rsyslog_monitor_conf_lines(label, log_path, facility):
+    # I tried using the "modern" config, but it's buggy - the
+    # facility option (local6) was being ignored.
+    return [
+        "",
+        "$InputFileName {}".format(log_path),
+        "$InputFileTag {}:".format(label),
+        "$InputFileStateFile {}-log-state".format(label),
+        "$InputFileSeverity info",
+        "$InputFileFacility {}".format(facility),
+        "$InputRunFileMonitor",
+        "$InputFilePollInterval 1"
+    ]
+
 def write_rsyslog_conf(args):
     rsyslog_conf_lines = [
+        "local5.* /var/log/server.log",
         "local6.* /var/log/client.log",
         "",
         "$ModLoad imfile"
     ]
     all_config = get_all_playground_config()
     for playground_name in all_config:
-        # I tried using the "modern" config, but it's buggy - the
-        # facility option (local6) was being ignored.
-        rsyslog_conf_lines.extend([
-            "",
-            "# monitor {} 's client.log and send to local6 facility".format(playground_name),
-            "$InputFileName /home/ubuntu/playgrounds/{}/client.log".format(playground_name),
-            "$InputFileTag {}-client:".format(playground_name),
-            "$InputFileStateFile {}-client-log-state".format(playground_name),
-            "$InputFileSeverity info",
-            "$InputFileFacility local6",
-            "$InputRunFileMonitor",
-            "$InputFilePollInterval 1"
-        ])
+        rsyslog_conf_lines.extend(
+            rsyslog_monitor_conf_lines(
+                playground_name + "-client",
+                "/home/ubuntu/playgrounds/{}/client.log".format(playground_name),
+                "local6"))
+
+    rsyslog_conf_lines.extend(rsyslog_monitor_conf_lines("nginx-access", "/var/log/nginx/access.log", "local5"))
+    rsyslog_conf_lines.extend(rsyslog_monitor_conf_lines("nginx-error", "/var/log/nginx/error.log", "local5"))
 
     playground_config = load_playground_config(args.playground_name, args.playground_config_file)
     loggly = [
         "",
-        "# send local6 logging to loggly",
+        "# send above logging to loggly",
         "$WorkDirectory /var/spool/rsyslog # where to place spool files",
         "$ActionQueueFileName fwdRule1     # unique name prefix for spool files",
         "$ActionQueueMaxDiskSpace 1g       # 1gb space limit (use as much as possible)",
@@ -888,7 +898,7 @@ def write_rsyslog_conf(args):
         "",
         'template(name="LogglyFormat" type="string" string="<%pri%>%protocol-version% %timestamp:::date-rfc3339% %HOSTNAME% %app-name% %procid% %msgid% [{}@41058] %msg%\\n")'.format(playground_config.loggly_token),
         "",
-        'local6.* action(type="omfwd" protocol="tcp" target="logs-01.loggly.com" port="514" template="LogglyFormat")'
+        'local5.*;local6.* action(type="omfwd" protocol="tcp" target="logs-01.loggly.com" port="514" template="LogglyFormat")'
     ]
     rsyslog_conf_lines.extend(loggly)
 
