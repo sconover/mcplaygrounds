@@ -38,6 +38,9 @@ def now_str():
 def pdir(playground_name):
     return "playgrounds/{}".format(playground_name)
 
+def abs_pdir(playground_name):
+    return "/home/ubuntu/playgrounds/{}".format(playground_name)
+
 def copy_minecraft_server_files(playground_name):
     ssh_exec("file {}/minecraft-server || (mkdir {}/minecraft-server && cp -R {}/. {}/minecraft-server/)".format(
         pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
@@ -299,6 +302,12 @@ def prepare_client_log(playground_name):
         "sudo chown www-data {}/client.log".format(pdir(playground_name))
     ])
 
+def prepare_console_log(playground_name):
+    ssh_exec_all([
+        # Create a log dir to contains "tee's" of all console logs
+        "mkdir -p {}/tmux_console_logs".format(pdir(playground_name))
+    ])
+
 def reload_nginx():
     ssh_exec("sudo /etc/init.d/nginx reload")
 
@@ -336,6 +345,7 @@ def overlay(args):
     upload_staged_files(args.playground_name)
     reset_basic_auth_password(args.playground_name, playground_config.web_password)
     prepare_client_log(args.playground_name)
+    prepare_console_log(args.playground_name)
     reload_nginx()
     write_crontab(args)
     write_rsyslog_conf(args)
@@ -757,13 +767,15 @@ def tmux_kill_bash_fragment(session_name):
         "fi"
     ])
 
-def tmux_new_session_command_no_cd(session_name, command):
-    return "/usr/bin/tmux new-session -s {} -d '{}'".format(session_name, command)
+def tmux_new_session_command_no_cd(session_name, command, console_log_path):
+    return "/usr/bin/tmux new-session -s {} -d '{} 2>&1 | tee -a {}'".format(session_name, command, console_log_path)
 
 def tmux_playground_start_command_no_cd(playground_name, tmux_session_suffix, command):
+    session_name = playground_name + "-" + tmux_session_suffix
     return tmux_new_session_command_no_cd(
                 playground_name + "-" + tmux_session_suffix,
-                command)
+                command,
+                abs_pdir(playground_name) + "/tmux_console_logs/" + session_name + ".log")
 
 def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_session_suffix, start_command, relative_path):
     session_name = playground_name + "-" + tmux_session_suffix
@@ -777,41 +789,49 @@ def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_sessi
 def stage_start_bin(playground_config):
     if playground_config.minecraft_server_port:
         write_playground_bash_script_to_staging_dir([
-            "cd /home/ubuntu/{}/minecraft-server".format(pdir(playground_config.playground_name)),
+            "cd {}/minecraft-server".format(abs_pdir(playground_config.playground_name)),
             "exec java -Xmx8g -Xms1g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -Xmn512m -XX:ParallelGCThreads=4 -jar sponge-minecraft-server.jar run"
         ], "/bin/start/start_minecraft_server")
 
         write_tmux_session_restart_script_to_staging_dir(
             playground_config.playground_name,
             "mc",
-            "/home/ubuntu/{}/bin/start/start_minecraft_server".format(pdir(playground_config.playground_name)),
+            "{}/bin/start/start_minecraft_server".format(abs_pdir(playground_config.playground_name)),
             "/bin/tmux/tmux_restart_minecraft_server")
 
         if playground_config.minecraft_startup_commands and len(playground_config.minecraft_startup_commands) > 0:
             minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_config.playground_name, c), playground_config.minecraft_startup_commands))
 
             write_playground_bash_script_to_staging_dir([
-                "cd /home/ubuntu/{}/minecraft-server".format(pdir(playground_config.playground_name)),
+                "cd {}/minecraft-server".format(abs_pdir(playground_config.playground_name)),
                 "while ! nc -q 1 localhost " + str(playground_config.minecraft_server_port) + " </dev/null; do sleep 1; echo waiting; done && echo started && " + minecraft_console_commands
             ], "/bin/start/run_minecraft_startup_console_commands")
 
             write_tmux_session_restart_script_to_staging_dir(
                 playground_config.playground_name,
                 "mc-init",
-                "/home/ubuntu/{}/bin/start/run_minecraft_startup_console_commands".format(pdir(playground_config.playground_name)),
+                "{}/bin/start/run_minecraft_startup_console_commands".format(abs_pdir(playground_config.playground_name)),
                 "/bin/tmux/tmux_run_minecraft_startup_console_commands")
 
     if playground_config.ipython_notebook_server_http_port:
         write_playground_bash_script_to_staging_dir([
-            "cd /home/ubuntu/{}/ipython-notebook-root".format(pdir(playground_config.playground_name)),
+            "cd {}/ipython-notebook-root".format(abs_pdir(playground_config.playground_name)),
             "exec ../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py --ipython-dir=."
         ], "/bin/start/start_ipython_notebook_server")
 
         write_tmux_session_restart_script_to_staging_dir(
             playground_config.playground_name,
             "py",
-            "/home/ubuntu/{}/bin/start/start_ipython_notebook_server".format(pdir(playground_config.playground_name)),
+            "{}/bin/start/start_ipython_notebook_server".format(abs_pdir(playground_config.playground_name)),
             "/bin/tmux/tmux_restart_ipython_notebook_server")
+
+def get_tmux_start_scripts():
+    # get all executable files in all playground bin/tmux dirs, absolute paths
+    return ssh_get("find playgrounds/*/bin/tmux -type f -executable | xargs -r -L 1 readlink -f").strip().split("\n")
+
+def get_tmux_console_log_files():
+    # get all executable files in all playground bin/tmux dirs, absolute paths
+    return ssh_get("find playgrounds/*/tmux_console_logs/*.log -type f | xargs -r -L 1 readlink -f").strip().split("\n")
 
 def write_crontab(args):
     crontab_lines = [
@@ -820,9 +840,7 @@ def write_crontab(args):
     crontab_lines.append("@reboot /usr/bin/tmux new-session -s dstat -d '/usr/bin/dstat --time --load --mem --net  --io --swap --page --sys'")
     # crontab_lines.append("@reboot /usr/bin/tmux new-session -s mapcrafter -d 'while :; do nice -n 20 /usr/bin/mapcrafter -c mapcrafter.conf; sleep 30; done'")
 
-    # get all executable files in all playground bin/tmux dirs, absolute paths
-    tmux_start_scripts = ssh_get("find playgrounds/*/bin/tmux -type f -executable | xargs -r -L 1 readlink -f").strip().split("\n")
-    at_reboot_tmux_sessions = map(lambda path: "@reboot " + path, tmux_start_scripts)
+    at_reboot_tmux_sessions = map(lambda path: "@reboot " + path, get_tmux_start_scripts())
 
     crontab_lines.extend(at_reboot_tmux_sessions)
 
@@ -884,6 +902,11 @@ def write_rsyslog_conf(args):
 
     rsyslog_conf_lines.extend(rsyslog_monitor_conf_lines("nginx-access", "/var/log/nginx/access.log", "local5"))
     rsyslog_conf_lines.extend(rsyslog_monitor_conf_lines("nginx-error", "/var/log/nginx/error.log", "local5"))
+
+    # go look for all tmux console logs and monitor them
+    for f in get_tmux_console_log_files():
+        label = os.path.basename(f).replace(".log", "")
+        rsyslog_conf_lines.extend(rsyslog_monitor_conf_lines(label, f, "local5"))
 
     playground_config = load_playground_config(args.playground_name, args.playground_config_file)
     loggly = [
