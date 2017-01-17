@@ -52,10 +52,7 @@ location /${playground_name}/ {
     ';
   }
 
-  # GAME_BIN_PATHS_GO_HERE
+  # BIN_PATHS_GO_HERE
 
-
-  # URL_BIN_PATHS_START_HERE
-  # URL_BIN_PATHS_END_HERE
 }
 
