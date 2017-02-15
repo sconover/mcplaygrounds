@@ -203,7 +203,13 @@ namespace mcprog2
                 loadUrlInBrowser(newUrl);
                 updateWindowTitle();
             };
-            menu.Items.Add(browseToUrl);
+            
+            //MenuItem refreshMinecraftSession = new MenuItem();
+            //refreshMinecraftSession.Header = "Refresh Minecraft Session";
+            //refreshMinecraftSession.Click += (innerSender, args) => {
+            //    MinecraftUtil.
+            //};
+            //menu.Items.Add(refreshMinecraftSession);
 
             return menu;
         }
