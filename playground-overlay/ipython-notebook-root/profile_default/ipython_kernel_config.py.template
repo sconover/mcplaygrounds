@@ -7,5 +7,5 @@ c.IPKernelApp.exec_lines = [
   "init(connect, player='${initial_minecraft_player_name_for_oogway}')",
   "%load_ext autoreload",
   "%autoreload 2",
-  "from share import *"
+  "import share"
 ]

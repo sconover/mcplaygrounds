@@ -17,16 +17,5 @@ import os
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(this_dir, "lib/codeshare"))
+sys.path.append(os.path.join(this_dir, "data"))
 
-import ipynb_util
-import document
-
-def post_save(model, os_path, contents_manager):
-    ipynb_glob = os.path.join(this_dir, "data/*.ipynb")
-    dest_python_source_file = os.path.join(this_dir, "data/share/${playground_name}.py")
-    ipynb_util.extract_functions_from_ipynb_files_and_write_to_file_if_successful(ipynb_glob, dest_python_source_file)
-    document.gen_simple_html_documentation(os.path.join(this_dir, "data/share"), os.path.join(this_dir, "data/share/doc.html"))
-
-c.FileContentsManager.post_save_hook = post_save
-
-post_save(None, None, None)

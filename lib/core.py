@@ -80,6 +80,7 @@ class ServerConfig(BaseSettingsClass):
         # here for the possibility of overriding in the server config file
         self.modern_gradle_apt_repo = "ppa:cwchien/gradle"
         self.modern_nginx_apt_repo = "ppa:nginx/stable"
+        self.modern_openjdk_apt_repo = "ppa:openjdk-r/ppa"
         self.raspberry_juice_sponge_plugin_git_repo = "https://github.com/sconover/RaspberryJuiceSpongePlugin"
         self.raspberry_juice_sponge_plugin_git_branch = "master"
         self.ipython_git_repo = "https://github.com/ipython/ipython"
