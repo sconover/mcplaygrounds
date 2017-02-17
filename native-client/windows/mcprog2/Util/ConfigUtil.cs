@@ -97,9 +97,9 @@ namespace mcprog2.Util
 
             Uri configUri = null;
             string configUriStr = (string)bootstrap["base_uri"] + (string)bootstrap["config_path"];
-            if (!configUriStr.StartsWith("file") && !configUriStr.StartsWith("http"))
+            if (configUriStr.StartsWith("http://example.com") || !configUriStr.StartsWith("file") && !configUriStr.StartsWith("http"))
             {
-                configUri = uriFromRelativeFilePathToProcess(configUriStr);
+                configUri = uriFromRelativeFilePathToProcess((string)bootstrap["config_path"]);
             }
             else
             {

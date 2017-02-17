@@ -51,38 +51,14 @@ namespace mcprog2.Util
 
         private static void loadMinecraftProfileVariables(JObject config)
         {
-            if (config["hosted_app_window"]["variables"] != null &&
-                config["hosted_app_window"]["variables"]["load_selected_minecraft_profile_from_launcher_profiles_json"] != null)
+            if (MinecraftUtil.hasMinecraftLauncherProfilesJson(config))
             {
-                string path = substitute((string)config["hosted_app_window"]["variables"]["load_selected_minecraft_profile_from_launcher_profiles_json"]);
-                Dictionary<string, string> profileContents = getSelectedMinecraftProfileFromLauncherProfilesJson(path);
+                Dictionary<string, string> profileContents = MinecraftUtil.loadSelectedMinecraftProfileFromLauncherProfilesJson(config);
                 
                 foreach (KeyValuePair<string, string> kv in profileContents)
                 {
                     addSetting("selected_minecraft_launcher_profile:" + kv.Key, kv.Value);
                 }
-            }
-        }
-
-        private static Dictionary<string, string> getSelectedMinecraftProfileFromLauncherProfilesJson(string launcherProfilesJsonPath)
-        {
-            Contract.Requires(File.Exists(launcherProfilesJsonPath), "file not found: " + launcherProfilesJsonPath);
-            JObject lp = JObject.Parse(File.ReadAllText(launcherProfilesJsonPath));
-            
-            if (lp["selectedUser"] != null &&
-                lp["authenticationDatabase"] != null &&
-                lp["authenticationDatabase"][lp["selectedUser"].ToString()] != null)
-            {
-                Dictionary<string, string> result = new Dictionary<string, string>();
-                foreach (JProperty p in lp["authenticationDatabase"][lp["selectedUser"].ToString()])
-                {
-                    result[p.Name] = p.Value.ToString();
-                }
-                return result;
-            }
-            else
-            {
-                return new Dictionary<string, string>();
             }
         }
 
