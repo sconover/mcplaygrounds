@@ -56,6 +56,28 @@ def bootstrap(args):
     #     "sudo update-java-alternatives --set java-1.8.0-openjdk-amd64",
     #     "sudo pip install virtualenv virtualenvwrapper"
     # ])
+
+    # jdk 8
+    # ssh_exec_all([
+    #     "sudo apt-get update",
+    #     "sudo apt-get install openjdk-8-jdk icedtea-7-plugin -y",
+    #     "sudo apt-get autoremove libjna-java -y" # having this in place causes "updateLastError method for class com.sun.jna.Native" when building spigot via maven
+    # ])
+
+    #     # also had to do this...not sure how to automate it...ugh
+    #     ubuntu@ip-172-30-0-19:~$ sudo update-alternatives --config javac
+    # sudo: unable to resolve host ip-172-30-0-19
+    # There are 2 choices for the alternative javac (providing /usr/bin/javac).
+
+    #   Selection    Path                                         Priority   Status
+    # ------------------------------------------------------------
+    # * 0            /usr/lib/jvm/java-7-openjdk-amd64/bin/javac   1071      auto mode
+    #   1            /usr/lib/jvm/java-7-openjdk-amd64/bin/javac   1071      manual mode
+    #   2            /usr/lib/jvm/java-8-openjdk-amd64/bin/javac   1069      manual mode
+
+    # Press enter to keep the current choice[*], or type selection number: 2
+    # update-alternatives: using /usr/lib/jvm/java-8-openjdk-amd64/bin/javac to provide /usr/bin/javac (javac) in manual mode
+
     ssh_exec("file RaspberryJuiceSpongePlugin/.git || git clone {} --recursive".format(config.raspberry_juice_sponge_plugin_git_repo))
     ssh_exec("file ipython/.git || git clone {} --recursive".format(config.ipython_git_repo))
     ssh_exec("file mcpi/.git || git clone {}".format(config.mcpi_git_repo))
@@ -202,6 +224,16 @@ def build_spigot_minecraft_buildtools_maven(args):
         "cd spigot-buildtools",
         "time mvn clean package && time java -jar target/BuildTools.jar --disable-certificate-check --dev"
     ])
+add_simple_subparser(build_spigot_minecraft_buildtools_maven)
+
+
+def build_grpc_craft_plugin_for_spigot(args):
+    ssh_exec_all([
+        "cd grpc-craft",
+        "time mvn clean package"
+    ])
+add_simple_subparser(build_grpc_craft_plugin_for_spigot)
+
 
 
 

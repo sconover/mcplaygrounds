@@ -126,7 +126,6 @@ def ssh_exec_all(commands):
     ssh_exec(" && ".join(commands))
 
 def ssh_parts():
-    home = os.path.expanduser("~")
     server_config = load_current_server_config()
     return ['/usr/bin/ssh'] + all_ssh_options() + [server_config.user_at_host]
 
