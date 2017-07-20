@@ -91,6 +91,10 @@ class ServerConfig(BaseSettingsClass):
         self.mcgamedata_git_branch = "master"
         self.oogway_git_repo = "https://github.com/sconover/oogway"
         self.oogway_git_branch = "master"
+        self.spigot_buildtools_git_repo = "git@github.com:copypastel/spigot-buildtools.git"
+        self.spigot_buildtools_git_branch = "master"
+        self.grpc_craft_git_repo = "git@github.com:copypastel/grpc-craft.git"
+        self.grpc_craft_git_branch = "steve.oogway.big_rename_of_java_oogway_to_oogway_backend"
         self.server_label = None
 
         # these MUST be specified in the separate server config file
@@ -114,13 +118,17 @@ def load_current_server_config():
     server_config.load_json(open(current_server_config_path()).read())
     return server_config
 
+def all_ssh_options():
+    return ["-oControlMaster=auto", "-oControlPath=/tmp/%h_%p_%r", "-oForwardAgent=yes"] + \
+    load_current_server_config().ssh_options
+
 def ssh_exec_all(commands):
     ssh_exec(" && ".join(commands))
 
 def ssh_parts():
     home = os.path.expanduser("~")
     server_config = load_current_server_config()
-    return ['/usr/bin/ssh', server_config.ssh_options.replace("~", home), server_config.user_at_host]
+    return ['/usr/bin/ssh'] + all_ssh_options() + [server_config.user_at_host]
 
 def ssh_command_parts(remote_command):
     parts = ssh_parts()
@@ -140,11 +148,8 @@ def ssh_get(remote_command):
 
 def scp_parts(local_path, remote_path):
     server_config = load_current_server_config()
-    return [
-        '/usr/bin/scp', server_config.ssh_options, '-r',
-        local_path,
-        server_config.user_at_host + ":" + remote_path
-    ]
+    return ['/usr/bin/scp'] + all_ssh_options() + \
+        ['-r', local_path, server_config.user_at_host + ":" + remote_path]
 
 def scp_r(local_path, remote_path):
     parts = scp_parts(local_path, remote_path)

@@ -44,20 +44,25 @@ def bootstrap(args):
         "sudo sh -c \"echo 'www-data ALL = (ubuntu) NOPASSWD: /home/ubuntu/playgrounds/*/bin/*/*/*' >> /etc/sudoers.d/www-data-playground-bin\""
     ])
 
-    ssh_exec_all([
-        "sudo add-apt-repository {} -y".format(config.modern_gradle_apt_repo), # need a modern gradle
-        "sudo add-apt-repository {} -y".format(config.modern_nginx_apt_repo), # need a modern nginx
-        "echo \"deb http://packages.mapcrafter.org/debian $(lsb_release -sc) main\" | sudo tee /etc/apt/sources.list.d/mapcrafter.list",
-        "sudo wget -O /etc/apt/trusted.gpg.d/mapcrafter.gpg http://packages.mapcrafter.org/debian/keyring.gpg",
-        "sudo apt-get update",
-        "sudo apt-get install apache2-utils build-essential dstat git gradle htop maven nginx nginx-extras nodejs-legacy npm openjdk-7-jdk python-pip python-dev sysstat tmux -y",
-        "sudo pip install virtualenv virtualenvwrapper"
-    ])
+    # ugh bitrot, commenting this out
+    # ssh_exec_all([
+    #     "sudo add-apt-repository {} -y".format(config.modern_gradle_apt_repo), # need a modern gradle
+    #     # "sudo add-apt-repository {} -y".format(config.modern_nginx_apt_repo), # need a modern nginx
+    #     "sudo add-apt-repository {} -y".format(config.modern_openjdk_apt_repo), # need java 8
+    #     # "echo \"deb http://packages.mapcrafter.org/debian $(lsb_release -sc) main\" | sudo tee /etc/apt/sources.list.d/mapcrafter.list",
+    #     # "sudo wget -O /etc/apt/trusted.gpg.d/mapcrafter.gpg http://packages.mapcrafter.org/debian/keyring.gpg",
+    #     "sudo apt-get update",
+    #     "sudo apt-get install apache2-utils build-essential dstat git gradle htop maven nginx nginx-extras nodejs-legacy npm openjdk-8-jdk python-pip python-dev sysstat tmux -y",
+    #     "sudo update-java-alternatives --set java-1.8.0-openjdk-amd64",
+    #     "sudo pip install virtualenv virtualenvwrapper"
+    # ])
     ssh_exec("file RaspberryJuiceSpongePlugin/.git || git clone {} --recursive".format(config.raspberry_juice_sponge_plugin_git_repo))
     ssh_exec("file ipython/.git || git clone {} --recursive".format(config.ipython_git_repo))
     ssh_exec("file mcpi/.git || git clone {}".format(config.mcpi_git_repo))
     ssh_exec("file mcgamedata/.git || git clone {}".format(config.mcgamedata_git_repo))
     ssh_exec("file oogway/.git || git clone {}".format(config.oogway_git_repo))
+    ssh_exec("file spigot-buildtools/.git || git clone {}".format(config.spigot_buildtools_git_repo))
+    ssh_exec("file grpc-craft/.git || git clone {}".format(config.grpc_craft_git_repo))
 
     # set up nginx, notably to be able to point to playground nginx.conf's
     scp_r("server-files/nginx.conf", "/tmp")
@@ -119,7 +124,16 @@ def pull(args):
 
         "cd $HOME/oogway",
         "git pull --all",
-        "git checkout {}".format(config.oogway_git_branch)
+        "git checkout {}".format(config.oogway_git_branch),
+
+        "cd $HOME/spigot-buildtools",
+        "git pull --all",
+        "git checkout {}".format(config.spigot_buildtools_git_branch),
+
+        "cd $HOME/grpc-craft",
+        "git pull --all",
+        "git checkout {}".format(config.grpc_craft_git_branch),
+        "git submodule update --init --recursive"
     ])
 add_simple_subparser(pull)
 
@@ -149,7 +163,7 @@ def build_minecraft_server(args):
 add_simple_subparser(build_minecraft_server)
 
 def build_raspberry_juice_plugin_gradle(args):
-    ssh_exec_all([
+    ssh_exec_all(     [
         "cd RaspberryJuiceSpongePlugin",
         "time gradle --no-rebuild :clean :build"
     ])
@@ -178,6 +192,22 @@ def build_ipython_3x(args):
         "../{}/bin/python setup.py install".format(const.PYTHON_VIRTUALENV)
     ])
 add_simple_subparser(build_ipython_3x)
+
+
+
+# SPIGOT/GRPC-CRAFT START
+
+def build_spigot_minecraft_buildtools_maven(args):
+    ssh_exec_all([
+        "cd spigot-buildtools",
+        "time mvn clean package && time java -jar target/BuildTools.jar --disable-certificate-check --dev"
+    ])
+
+
+
+# SPIGOT/GRPC-CRAFT END
+
+
 
 def build(args):
     build_minecraft_server(args)
