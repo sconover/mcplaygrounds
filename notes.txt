@@ -1,3 +1,16 @@
+hygiene TODO's
+
+README
+- instructions for setting up python env (pyenv instructions, install simplejson, jsonschema)
+- dev env recommendations: sublime 3 w/ anaconda, and linter turned off via property
+
+work
+- split up playground file
+- audit playground and delete unused code/functionality
+
+
+=========
+
 Multi-account notes
 
 audit all aspect of this setup and create a plan for how access control could be safely shared

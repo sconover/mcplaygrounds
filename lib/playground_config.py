@@ -4,6 +4,7 @@ class PlaygroundConfig(BaseSettingsClass):
     def __init__(self):
         self.playground_name = None
         self.minecraft_server_port = None
+        self.minecraft_server_variant = None
         self.minecraft_gamemode = None
         self.minecraft_force_gamemode = None
         self.minecraft_spawn_monsters = None
@@ -13,6 +14,7 @@ class PlaygroundConfig(BaseSettingsClass):
         self.minecraft_whitelist_json = None
         self.minecraft_startup_commands = None
         self.raspberry_juice_sponge_plugin_port = None
+        self.grpc_craft_port = None
         self.ipython_notebook_server_http_port = None
         self.web_password = None
         self.initial_minecraft_player_name_for_oogway = None
@@ -42,6 +44,9 @@ DEFAULT_CONFIG.minecraft_whitelist_json = "[]"
 DEFAULT_CONFIG.minecraft_startup_commands = []
 DEFAULT_CONFIG.teleport_destinations = {}
 DEFAULT_CONFIG.minecraft_server_port = False
+DEFAULT_CONFIG.raspberry_juice_sponge_plugin_port = False
+DEFAULT_CONFIG.grpc_craft_port = False
+DEFAULT_CONFIG.minecraft_server_variant = "sponge_mcpi" # also, "spigot_grpc"
 DEFAULT_CONFIG.personal_x_1 = 0
 DEFAULT_CONFIG.personal_z_1 = 0
 DEFAULT_CONFIG.personal_x_2 = 0

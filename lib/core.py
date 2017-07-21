@@ -137,13 +137,13 @@ def ssh_command_parts(remote_command):
 def ssh_exec(remote_command):
     parts = ssh_command_parts(remote_command)
     cmd = " ".join(parts)
-    print "> {}".format(cmd)
+    print("> {}".format(cmd))
     sys.stderr.write("< ")
     if subprocess.call(parts)!=0:
         raise Exception("FAILED: {}".format(cmd))
 
 def ssh_get(remote_command):
-    return subprocess.check_output(ssh_command_parts(remote_command)).strip()
+    return subprocess.check_output(ssh_command_parts(remote_command)).decode("utf-8").strip()
 
 def scp_parts(local_path, remote_path):
     server_config = load_current_server_config()
@@ -153,7 +153,7 @@ def scp_parts(local_path, remote_path):
 def scp_r(local_path, remote_path):
     parts = scp_parts(local_path, remote_path)
     cmd = " ".join(parts)
-    print "> {}".format(cmd)
+    print("> {}".format(cmd))
     if subprocess.call(parts)!=0:
         raise Exception("FAILED: {}".format(cmd))
 
@@ -165,6 +165,6 @@ def scp_r_remote_to_local(remote_path, local_path):
         local_path
     ]
     cmd = " ".join(parts)
-    print "> {}".format(cmd)
+    print("> {}".format(cmd))
     if subprocess.call(parts)!=0:
         raise Exception("FAILED: {}".format(cmd))
