@@ -434,7 +434,6 @@ def does_tmux_session_exist(session_name):
 
 def stop_ipython(args):
     tmux_kill(args.playground_name + "-py")
-    kill_if_listening_on_port()
 add_simple_subparser(stop_ipython)
 
 def stop_minecraft(args):
@@ -492,11 +491,34 @@ def deploy_grpc_craft_plugin_and_restart_spigot(args):
     start_minecraft(args)
 add_simple_subparser(deploy_grpc_craft_plugin_and_restart_spigot)
 
+def deploy_grpc_craft_python_client(args):
+    dest = grpc_craft_python_client_lib_dir(args.playground_name)
+    ssh_exec("rm -rf {} && cp -R `{}` {}".format(dest, const.GRPC_CRAFT_PYTHON_CLIENT_DIR_LOCATOR_COMMAND, dest))
+    # ssh_exec("rm -f {} && cp -R `{}` {}".format(dest, const.GRPC_CRAFT_PYTHON_CLIENT_DIR_LOCATOR_COMMAND, dest))
+add_simple_subparser(deploy_grpc_craft_python_client)
+
+def deploy_grpc_craft_python_client_and_restart_ipython(args):
+    stop_ipython(args)
+    deploy_grpc_craft_python_client(args)
+    start_ipython(args)
+add_simple_subparser(deploy_grpc_craft_python_client_and_restart_ipython)
+
+def update_grpc_craft(args):
+    deploy_grpc_craft_python_client_and_restart_ipython(args)
+    deploy_grpc_craft_plugin_and_restart_spigot(args)
+add_simple_subparser(update_grpc_craft)
+
 def destroy(args):
     exists(args)
     stop(args)
     ssh_exec("rm -rf {}".format(pdir(args.playground_name)))
 add_simple_subparser(destroy)
+
+def grpc_craft_python_client_lib_dir(playground_name):
+    return ipython_lib_dir(playground_name) + "/oogway_client"
+
+def ipython_lib_dir(playground_name):
+    return "{}/ipython-notebook-root/lib".format(pdir(playground_name))
 
 def ipython_data_dir(playground_name):
     return "{}/ipython-notebook-root/data".format(pdir(playground_name))

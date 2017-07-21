@@ -205,11 +205,14 @@ add_simple_subparser(build_raspberry_juice_plugin)
 
 def build_ipython_3x(args):
     ssh_exec_all([
+        "pkill python || true", # kill off all ipython servers
         "virtualenv --no-site-packages " + const.PYTHON_VIRTUALENV,
         const.PYTHON_VIRTUALENV + "/bin/pip install invoke jinja2 jsonschema pyzmq pygments tornado",
         "npm install less bower",
         "cd ipython",
-        "../{}/bin/python setup.py install".format(const.PYTHON_VIRTUALENV)
+        "../{}/bin/python setup.py install".format(const.PYTHON_VIRTUALENV),
+        "cd ..",
+        const.PYTHON_VIRTUALENV + "/bin/pip install -r `{}`".format(const.GRPC_CRAFT_PYTHON_CLIENT_REQUIREMENTS_TXT_LOCATOR_COMMAND)
     ])
 add_simple_subparser(build_ipython_3x)
 
