@@ -661,42 +661,92 @@ def tmux_playground_start_command_no_cd(playground_name, tmux_session_suffix, co
                 command,
                 abs_pdir(playground_name) + "/tmux_console_logs/" + session_name + ".log")
 
-def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_session_suffix, start_command, relative_path):
+def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_session_suffix, start_command, relative_path, run_before=None):
     session_name = playground_name + "-" + tmux_session_suffix
-    write_playground_bash_script_to_staging_dir([
-        tmux_kill_bash_fragment(session_name),
+
+    lines = [tmux_kill_bash_fragment(session_name)]
+
+    if run_before!=None:
+        lines.extend([
+            "",
+            run_before
+        ])
+
+    lines.extend([
         "",
         tmux_playground_start_command_no_cd(playground_name, tmux_session_suffix, start_command),
         ""
-    ], relative_path)
+    ])
+
+    write_playground_bash_script_to_staging_dir(lines, relative_path)
 
 def stage_start_bin(playground_config):
     if playground_config.minecraft_server_port:
+
+        if playground_config.minecraft_server_variant not in [const.MINECRAFT_SERVER_VARIANT_SPONGE_MCPI, const.MINECRAFT_SERVER_VARIANT_SPIGOT_GRPC]:
+            raise Exception( \
+                "Every playground that runs a minecraft server " + \
+                "MUST declare a valid variant. Actual: {}".format(playground_config.minecraft_server_variant))
+
+        # minecraft start script and tmux restart script are intentionally named the same, 
+        # so that one replaces the other (depending on selected variant)
+
+        variant_message = "echo 'STARTING VARIANT: {}'".format(playground_config.minecraft_server_variant)
+
+        if playground_config.minecraft_server_variant == const.MINECRAFT_SERVER_VARIANT_SPONGE_MCPI:
+            write_playground_bash_script_to_staging_dir([
+                "cd {}/minecraft-server".format(abs_pdir(playground_config.playground_name)),
+                variant_message,
+                "exec java -Xmx8g -Xms1g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -XX:+PrintAdaptiveSizePolicy -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:minecraft-jvm-gc.log -jar sponge-minecraft-server.jar run"
+            ], "/bin/start/start_minecraft_server")
+
+        if playground_config.minecraft_server_variant == const.MINECRAFT_SERVER_VARIANT_SPIGOT_GRPC:
+            # server_id set purposefully at the front of the command for easy htop'ing
+            write_playground_bash_script_to_staging_dir([
+                "cd {}".format(spigot_dir_for_playground(playground_config.playground_name)),
+                variant_message,
+                "exec java -Xmx8g -Xms1g -Dserver_id=SPIGOTGRPC_{} -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -XX:+PrintAdaptiveSizePolicy -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:spigot-jvm-gc.log -jar spigot.jar".format(playground_config.playground_name)
+            ], "/bin/start/start_minecraft_server")
+
+        if not playground_config.minecraft_startup_commands or not len(playground_config.minecraft_startup_commands) > 0:
+            raise Exception( \
+                "Every playground that runs a minecraft server " + \
+                "MUST have at least one entry in minecraft_startup_commands")            
+
+        minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_config.playground_name, c), playground_config.minecraft_startup_commands))
+
+        # this works for spigot servers as well. whatever "minecraft" server happens to be
+        # running will have these console commands run on it.
+
         write_playground_bash_script_to_staging_dir([
             "cd {}/minecraft-server".format(abs_pdir(playground_config.playground_name)),
-            "exec java -Xmx8g -Xms1g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -XX:+PrintAdaptiveSizePolicy -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:minecraft-jvm-gc.log -jar sponge-minecraft-server.jar run"
-        ], "/bin/start/start_minecraft_server")
+            "while ! nc -q 1 localhost " + str(playground_config.minecraft_server_port) + " </dev/null; do sleep 1; echo waiting; done && echo started && " + minecraft_console_commands
+        ], "/bin/start/run_minecraft_startup_console_commands")
 
-        # server_id set purposefully at the front of the command for easy htop'ing
-        write_playground_bash_script_to_staging_dir([
-            "cd {}".format(spigot_dir_for_playground(playground_config.playground_name)),
-            "exec java -Xmx8g -Xms1g -Dserver_id=SPIGOTGRPC_{} -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -XX:+PrintAdaptiveSizePolicy -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:spigot-jvm-gc.log -jar spigot.jar".format(playground_config.playground_name)
-        ], "/bin/start/start_spigot_server")
+        write_tmux_session_restart_script_to_staging_dir(
+            playground_config.playground_name,
+            "mc-init",
+            "{}/bin/start/run_minecraft_startup_console_commands".format(abs_pdir(playground_config.playground_name)),
+            "/bin/tmux/tmux_run_minecraft_startup_console_commands")
 
+        # spawn off a tmux restart of minecraft console command runner, before starting the minecraft server.
+        # so, the command script poll the minecraft port, and once it successfully connects, it then
+        # executes the startup commands against the (presumably now active) minecraft server console.
+        #
+        # this is the best way I currently know of to achieve a "minecraft server console startup script",
+        # and it's not good.
         write_tmux_session_restart_script_to_staging_dir(
             playground_config.playground_name,
             "mc",
             "{}/bin/start/start_minecraft_server".format(abs_pdir(playground_config.playground_name)),
-            "/bin/tmux/tmux_restart_minecraft_server")
-
-        write_tmux_session_restart_script_to_staging_dir(
-            playground_config.playground_name,
-            "mc",
-            "{}/bin/start/start_spigot_server".format(abs_pdir(playground_config.playground_name)),
-            "/bin/tmux/tmux_restart_spigot_minecraft_server")
+            "/bin/tmux/tmux_restart_minecraft_server",
+            run_before="nohup {}/bin/tmux/tmux_run_minecraft_startup_console_commands &".format(abs_pdir(playground_config.playground_name)))
 
         if playground_config.minecraft_startup_commands and len(playground_config.minecraft_startup_commands) > 0:
             minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_config.playground_name, c), playground_config.minecraft_startup_commands))
+
+            # this works for spigot servers as well. whatever "minecraft" server happens to be
+            # running will have these console commands run on it.
 
             write_playground_bash_script_to_staging_dir([
                 "cd {}/minecraft-server".format(abs_pdir(playground_config.playground_name)),
@@ -708,8 +758,6 @@ def stage_start_bin(playground_config):
                 "mc-init",
                 "{}/bin/start/run_minecraft_startup_console_commands".format(abs_pdir(playground_config.playground_name)),
                 "/bin/tmux/tmux_run_minecraft_startup_console_commands")
-
-            # TODO SPIGOT
 
     if playground_config.ipython_notebook_server_http_port:
         write_playground_bash_script_to_staging_dir([
