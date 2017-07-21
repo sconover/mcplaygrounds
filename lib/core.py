@@ -143,7 +143,7 @@ def ssh_exec(remote_command):
         raise Exception("FAILED: {}".format(cmd))
 
 def ssh_get(remote_command):
-    return subprocess.check_output(ssh_command_parts(remote_command)).decode("utf-8").strip()
+    return subprocess.check_output(ssh_command_parts(remote_command)).decode('utf-8').strip()
 
 def scp_parts(local_path, remote_path):
     server_config = load_current_server_config()

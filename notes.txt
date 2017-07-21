@@ -1,3 +1,9 @@
+rebuild grpc-craft plugin, deploy, restart bar spigot, for a given branch:
+
+./server pull-and-rebuild-grpc-craft steve.oogway.big_rename_of_java_oto_oogway_backend && ./playground bar deploy-grpc-craft-plugin-and-restart-spigot
+
+========
+
 hygiene TODO's
 
 README

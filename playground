@@ -47,6 +47,9 @@ def spigot_dir_for_playground(playground_name):
 def spigot_jar_for_playground(playground_name):
     return spigot_dir_for_playground(playground_name) + "/spigot.jar"
 
+def grpc_craft_plugin_jar_for_playground(playground_name):
+    return spigot_dir_for_playground(playground_name) + "/plugins/grpc-craft-plugin.jar"
+
 def copy_minecraft_server_files(playground_name):
     ssh_exec("file {}/minecraft-server || (mkdir -p {}/minecraft-server && cp -R {}/. {}/minecraft-server/)".format(
         pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
@@ -415,12 +418,12 @@ def tmux_kill(session_name):
 def kill_if_listening_on_port(port_number):
     ssh_exec("fuser -vk {}/tcp || true".format(port_number))
 
-def tmux_start(session_name):
+def tmux_start(playground_name, session_suffix, script_name):
+    session_name = playground_name + session_suffix
     if does_tmux_session_exist(session_name):
         print("tmux session '{}' found, doing nothing.".format(session_name))
     else:
-        start_command = ssh_get("crontab -l | grep 'new-session -s " + session_name + " -d' | sed 's/^\@reboot //'").strip()
-        ssh_exec(start_command)
+        ssh_exec(tmux_start_script_path(playground_name, script_name))
 
 def does_tmux_session_exist(session_name):
     output = ssh_get("tmux ls | egrep '^" + session_name + ": ' || true").strip()
@@ -436,16 +439,14 @@ add_simple_subparser(stop_ipython)
 
 def stop_minecraft(args):
     tmux_kill(args.playground_name + "-mc")
-    tmux_kill(args.playground_name + "-mc-init")
 add_simple_subparser(stop_minecraft)
 
 def start_ipython(args):
-    tmux_start(args.playground_name + "-py")
+    tmux_start(args.playground_name, "-py", "tmux_restart_ipython_notebook_server")
 add_simple_subparser(start_ipython)
 
 def start_minecraft(args):
-    tmux_start(args.playground_name + "-mc")
-    tmux_start(args.playground_name + "-mc-init")
+    tmux_start(args.playground_name, "-mc", "tmux_restart_minecraft_server")
 add_simple_subparser(start_minecraft)
 
 def restart_ipython(args):
@@ -479,6 +480,17 @@ def update_raspberry_plugin(args):
         pdir(args.playground_name) + "/minecraft-server/mods/")
     start_minecraft(args)
 add_simple_subparser(update_raspberry_plugin)
+
+def deploy_grpc_craft_plugin(args):
+    dest = grpc_craft_plugin_jar_for_playground(args.playground_name)
+    ssh_exec("rm -f {} && cp `{}` {}".format(dest, const.GRPC_CRAFT_PLUGIN_JAR_LOCATOR_COMMAND, dest))
+add_simple_subparser(deploy_grpc_craft_plugin)
+
+def deploy_grpc_craft_plugin_and_restart_spigot(args):
+    stop_minecraft(args)
+    deploy_grpc_craft_plugin(args)
+    start_minecraft(args)
+add_simple_subparser(deploy_grpc_craft_plugin_and_restart_spigot)
 
 def destroy(args):
     exists(args)
@@ -661,7 +673,10 @@ def tmux_playground_start_command_no_cd(playground_name, tmux_session_suffix, co
                 command,
                 abs_pdir(playground_name) + "/tmux_console_logs/" + session_name + ".log")
 
-def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_session_suffix, start_command, relative_path, run_before=None):
+def tmux_start_script_path(playground_name, script_name):
+    return "{}/bin/tmux/{}".format(abs_pdir(playground_name), script_name)
+
+def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_session_suffix, start_command, script_name, run_before=None):
     session_name = playground_name + "-" + tmux_session_suffix
 
     lines = [tmux_kill_bash_fragment(session_name)]
@@ -678,7 +693,7 @@ def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_sessi
         ""
     ])
 
-    write_playground_bash_script_to_staging_dir(lines, relative_path)
+    write_playground_bash_script_to_staging_dir(lines, tmux_start_script_path(playground_name, script_name))
 
 def stage_start_bin(playground_config):
     if playground_config.minecraft_server_port:
@@ -727,7 +742,7 @@ def stage_start_bin(playground_config):
             playground_config.playground_name,
             "mc-init",
             "{}/bin/start/run_minecraft_startup_console_commands".format(abs_pdir(playground_config.playground_name)),
-            "/bin/tmux/tmux_run_minecraft_startup_console_commands")
+            "tmux_run_minecraft_startup_console_commands")
 
         # spawn off a tmux restart of minecraft console command runner, before starting the minecraft server.
         # so, the command script poll the minecraft port, and once it successfully connects, it then
@@ -739,7 +754,7 @@ def stage_start_bin(playground_config):
             playground_config.playground_name,
             "mc",
             "{}/bin/start/start_minecraft_server".format(abs_pdir(playground_config.playground_name)),
-            "/bin/tmux/tmux_restart_minecraft_server",
+            "tmux_restart_minecraft_server",
             run_before="nohup {}/bin/tmux/tmux_run_minecraft_startup_console_commands &".format(abs_pdir(playground_config.playground_name)))
 
         if playground_config.minecraft_startup_commands and len(playground_config.minecraft_startup_commands) > 0:
@@ -757,7 +772,7 @@ def stage_start_bin(playground_config):
                 playground_config.playground_name,
                 "mc-init",
                 "{}/bin/start/run_minecraft_startup_console_commands".format(abs_pdir(playground_config.playground_name)),
-                "/bin/tmux/tmux_run_minecraft_startup_console_commands")
+                "tmux_run_minecraft_startup_console_commands")
 
     if playground_config.ipython_notebook_server_http_port:
         write_playground_bash_script_to_staging_dir([
@@ -769,7 +784,7 @@ def stage_start_bin(playground_config):
             playground_config.playground_name,
             "py",
             "{}/bin/start/start_ipython_notebook_server".format(abs_pdir(playground_config.playground_name)),
-            "/bin/tmux/tmux_restart_ipython_notebook_server")
+            "tmux_restart_ipython_notebook_server")
 
 def get_tmux_start_scripts():
     # get all executable files in all playground bin/tmux dirs, absolute paths

@@ -114,6 +114,15 @@ def clean_all(args):
     clean_artifacts(args)
 add_simple_subparser(clean_all)
 
+def pull_grpc_craft(branch):
+    config = load_current_server_config()
+    ssh_exec_all([
+        "cd $HOME/grpc-craft",
+        "git pull --all",
+        "git checkout {}".format(branch),
+        "git submodule update --init --recursive"
+    ])
+
 def pull(args):
     config = load_current_server_config()
 
@@ -142,13 +151,10 @@ def pull(args):
 
         "cd $HOME/spigot-buildtools",
         "git pull --all",
-        "git checkout {}".format(config.spigot_buildtools_git_branch),
-
-        "cd $HOME/grpc-craft",
-        "git pull --all",
-        "git checkout {}".format(config.grpc_craft_git_branch),
-        "git submodule update --init --recursive"
+        "git checkout {}".format(config.spigot_buildtools_git_branch)
     ])
+
+    pull_grpc_craft(config.grpc_craft_git_branch)
 add_simple_subparser(pull)
 
 def build_minecraft_gradle(args):
@@ -219,15 +225,22 @@ def build_spigot_minecraft_buildtools_maven(args):
 add_simple_subparser(build_spigot_minecraft_buildtools_maven)
 
 
-def build_grpc_craft_plugin_for_spigot(args):
+def build_grpc_craft(args):
     ssh_exec_all([
         "cd grpc-craft",
         "time mvn clean package"
     ])
-add_simple_subparser(build_grpc_craft_plugin_for_spigot)
+add_simple_subparser(build_grpc_craft)
 
-
-
+def pull_and_rebuild_grpc_craft(args):
+    pull_grpc_craft(args.branch)
+    ssh_exec_all([
+        "cd grpc-craft",
+        "time mvn clean package"
+    ])
+grpc_parser = subparsers.add_parser("pull-and-rebuild-grpc-craft")
+grpc_parser.add_argument('branch')
+grpc_parser.set_defaults(func=pull_and_rebuild_grpc_craft)
 
 # SPIGOT/GRPC-CRAFT END
 
