@@ -4,16 +4,6 @@ import sys
 import argparse
 import os.path
 import os
-import stat
-import shutil
-import json
-import simplejson
-import time
-import fileinput
-import jsonschema
-from string import Template
-import urllib
-import re
 
 from lib import const
 from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, scp_r_remote_to_local
@@ -23,315 +13,20 @@ this_dir = os.path.dirname(os.path.realpath(__file__))
 oogway_relative_dir = os.path.join(this_dir, "../oogway")
 sys.path.append(oogway_relative_dir)
 
-import oogway
-
-OVERLAY_STAGING_DIR = "/tmp/playground-staging"
-NATIVE_CLIENT_CONFIG_SCHEMA = simplejson.loads(open(this_dir + "/schema/native-client-config-schema.json").read())
+from lib.playground.ipython import *
+from lib.playground.nginx import *
+from lib.playground.process_management import *
+from lib.playground.rsyslog import *
+from lib.playground.spigot_grpc import *
+from lib.playground.sponge_mcpi import *
+from lib.playground.staging_files import *
+from lib.playground.teleport import *
+from lib.playground.util import *
+from lib.playground.windows_client import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('playground_name', type=str, help='help TODO')
 subparsers = parser.add_subparsers(help='sub-command help')
-
-def now_str():
-    return time.strftime('%Y%m%d%H%M%S', time.localtime())
-
-def pdir(playground_name):
-    return "playgrounds/{}".format(playground_name)
-
-def abs_pdir(playground_name):
-    return "/home/ubuntu/playgrounds/{}".format(playground_name)
-
-def spigot_dir_for_playground(playground_name):
-    return "{}/spigot-server".format(abs_pdir(playground_name))
-
-def spigot_jar_for_playground(playground_name):
-    return spigot_dir_for_playground(playground_name) + "/spigot.jar"
-
-def grpc_craft_plugin_jar_for_playground(playground_name):
-    return spigot_dir_for_playground(playground_name) + "/plugins/grpc-craft-plugin.jar"
-
-def copy_minecraft_server_files(playground_name):
-    ssh_exec("file {}/minecraft-server || (mkdir -p {}/minecraft-server && cp -R {}/. {}/minecraft-server/)".format(
-        pdir(playground_name), pdir(playground_name), const.MINECRAFT_LATEST_DIR, pdir(playground_name)))
-
-def copy_spigot_server_files(playground_name):
-    d = spigot_dir_for_playground(playground_name)
-    j = spigot_jar_for_playground(playground_name)
-    ssh_exec("mkdir -p {} && cp `{}` {}".format(d, const.SPIGOT_LATEST_JAR_LOCATOR_COMMAND, j))
-
-def write_executable_file(contents, path):
-    f = open(path, 'w')
-    f.write(contents)
-    f.close()
-    st = os.stat(path)
-    os.chmod(path, st.st_mode | stat.S_IEXEC)
-
-def write_bash_script(script_body_lines, path, bash_switches=" -ex"):
-    bash_lines = [
-        "#!/bin/bash{}".format(bash_switches),
-        ""
-    ]
-    bash_lines.extend(script_body_lines)
-    write_executable_file("\n".join(bash_lines), path)
-
-def write_playground_bash_script_to_staging_dir(script_body_lines, relative_path, bash_switches=" -ex"):
-    path = OVERLAY_STAGING_DIR + relative_path
-    if not os.path.isdir(os.path.dirname(path)):
-        os.makedirs(os.path.dirname(path))
-    write_bash_script(script_body_lines, path, bash_switches=bash_switches)
-
-class TeleportAction(): # struct style, in keeping with the rest of this file
-    def __init__(self, server_playground_name, player_name, destination_label, x, y, z):
-        self.server_playground_name = server_playground_name
-        self.player_name = player_name
-        self.destination_label = destination_label
-        self.x = x
-        self.y = y
-        self.z = z
-
-def all_accessible_teleport_actions(playground_config):
-    actions = []
-    all_config = get_all_playground_config()
-    for playground_name in all_config:
-        c = all_config[playground_name]
-
-        if c.teleport_destinations is not None \
-        and len(c.teleport_destinations) > 0 \
-        and playground_config.playground_name in c.teleport_destinations:
-            for destination_label in c.teleport_destinations[playground_config.playground_name]:
-                destination_coordinates = c.teleport_destinations[playground_config.playground_name][destination_label]
-                mc_server_playground_name = playground_config.playground_name
-                player_name = c.initial_minecraft_player_name_for_oogway
-                x = destination_coordinates["x"]
-                y = destination_coordinates["y"]
-                z = destination_coordinates["z"]
-                actions.append(TeleportAction(mc_server_playground_name, player_name, destination_label, x, y, z))
-    return actions
-
-def bash_fragment_teleport(teleport_action):
-    server_playground_name = teleport_action.server_playground_name
-    player_name = teleport_action.player_name
-    destination_label = teleport_action.destination_label
-    x = teleport_action.x
-    y = teleport_action.y
-    z = teleport_action.z
-    return "\n".join([
-        "",
-        "tmux send -t {server_playground_name}-mc \"tp {player_name} {x} {y} {z}\" ENTER",
-        "tmux send -t {server_playground_name}-mc \"spawnpoint {player_name} {x} {y} {z}\" ENTER",
-        "echo \"teleported {player_name} to {destination_label}=({x},{y},{z}) in minecraft server {server_playground_name}-mc\"",
-        ""
-    ]).format(**locals())
-
-def nginx_location_directive_for_executable(playground_name, url_path, bin_path, redirect_url_relative_path):
-    cmd = "sudo -u ubuntu " + bin_path
-    redirect = playground_name + redirect_url_relative_path
-    return "\n".join([
-        "",
-        "  location " + url_path + " {",
-        "    content_by_lua 'ngx.log(ngx.STDERR, \"will run: " + cmd +
-            " then will redirect to: " + redirect + "\");os.execute(\"" +
-            cmd + "\");return ngx.redirect(\"/" +
-            redirect + "\")';",
-        "  }",
-        ""
-    ])
-
-def rewrite_file_with_replace(path, search_for, replace_with):
-    content = open(path).read()
-    content = content.replace(search_for, replace_with)
-    f = open(path, 'w')
-    f.write(content)
-    f.close()
-
-def rewrite_file_with_multiline_regex_replace(path, regex, replace_with):
-    content = open(path).read()
-    content = re.sub(regex, replace_with, content, re.M | re.DOTALL)
-    f = open(path, 'w')
-    f.write(content)
-    f.close()
-
-def create_game_commands(playground_config, nginx_conf_file, index_html_file):
-    # TODO?: pull gamemode/spectator changes into here
-
-    if not playground_config.minecraft_server_port:
-        return
-
-    game_bin_dir = OVERLAY_STAGING_DIR + "/bin/game"
-    os.makedirs(game_bin_dir)
-
-    destination_to_actions = {}
-    for teleport_action in all_accessible_teleport_actions(playground_config):
-        if teleport_action.destination_label not in destination_to_actions:
-            destination_to_actions[teleport_action.destination_label] = []
-        destination_to_actions[teleport_action.destination_label].append(teleport_action)
-
-    for destination in sorted(destination_to_actions.keys()):
-        if len(destination_to_actions[destination])==1:
-            continue
-
-        teleport_bash_lines = [
-            "#!/bin/bash -ex",
-            ""
-        ]
-        for teleport_action in destination_to_actions[destination]:
-            teleport_bash_lines.append(bash_fragment_teleport(teleport_action))
-        file_name = "group_teleport_to__" + destination + "__" + str(len(destination_to_actions[destination])) + "_players"
-        path = game_bin_dir + "/" + file_name
-        write_executable_file("\n".join(teleport_bash_lines), path)
-
-    for teleport_action in all_accessible_teleport_actions(playground_config):
-        teleport_bash = "\n".join([
-            "#!/bin/bash -ex",
-            "",
-            bash_fragment_teleport(teleport_action)
-        ])
-        file_name = "teleport__" + teleport_action.player_name + "__to__" + teleport_action.destination_label
-        path = game_bin_dir + "/" + file_name
-        write_executable_file(teleport_bash, path)
-
-def get_bin_files_on_server_and_staged(playground_config):
-    bin_files_from_server = ssh_get("find {} -type f -executable | xargs -r -L 1 readlink -f".format(pdir(playground_config.playground_name))).strip().split("\n")
-
-    bin_files_from_stage_dir = []
-    for dirpath, dnames, fnames in os.walk(OVERLAY_STAGING_DIR + "/bin"):
-        for f in fnames:
-            bin_files_from_stage_dir.append(dirpath + "/" + f)
-
-    bin_files_from_stage_dir_as_will_be_on_server = \
-        map(lambda path: path.replace(OVERLAY_STAGING_DIR, "/home/ubuntu/" + pdir(playground_config.playground_name)), bin_files_from_stage_dir)
-
-    all_absolute_bin_paths = []
-    all_absolute_bin_paths.extend(bin_files_from_server)
-    all_absolute_bin_paths.extend(bin_files_from_stage_dir_as_will_be_on_server)
-    all_absolute_bin_paths = sorted(list(set(all_absolute_bin_paths)))
-    return all_absolute_bin_paths
-
-def create_nginx_location_directives_for_bin_files(playground_config, absolute_bin_paths, nginx_conf_file, index_html_file):
-    url_paths = []
-
-    nginx_location_directives = ""
-    for bin_path in absolute_bin_paths:
-        url_path = "/" + playground_config.playground_name + "/" + bin_path.replace("/home/ubuntu/{}/".format(pdir(playground_config.playground_name)), "").replace("/", "__").replace("-", "_")
-        url_paths.append(url_path)
-        location_directive = \
-            nginx_location_directive_for_executable(
-                playground_config.playground_name,
-                url_path,
-                bin_path,
-                "#bin")
-        nginx_location_directives += location_directive
-
-    rewrite_file_with_replace(nginx_conf_file, "# BIN_PATHS_GO_HERE", nginx_location_directives)
-
-    bin_items = map(lambda u: "<li><a href=\"" + u + "\">" + u + "</a></li>", url_paths)
-    rewrite_file_with_replace(index_html_file, "<!-- BIN_PATHS_GO_HERE -->", "<ul>\n" + "\n".join(bin_items) + "\n</ul>")
-
-def evaluate_and_replace_templates(root_dir, template_vars):
-    for dirpath, dnames, fnames in os.walk(root_dir):
-        for f in fnames:
-            path = os.path.join(dirpath, f)
-            if (path.endswith(".template")):
-                new_file_content = Template(open(path).read()).substitute(template_vars)
-                path_without_template_extension = os.path.splitext(path)[0]
-                f = open(path_without_template_extension, 'w')
-                f.write(new_file_content)
-                f.close()
-                os.remove(path)
-
-def seed_staging_dir(staging_dir, overlay_dir, template_vars):
-    shutil.rmtree(staging_dir, ignore_errors=True)
-    shutil.copytree(overlay_dir, staging_dir)
-    evaluate_and_replace_templates(staging_dir, template_vars)
-
-def stage_overlay_files(playground_config):
-    seed_staging_dir(OVERLAY_STAGING_DIR, "playground-overlay", playground_config.to_dict())
-    playground_config.write_to_file("{}/playground.json".format(OVERLAY_STAGING_DIR))
-    validate_files(OVERLAY_STAGING_DIR)
-    create_game_commands(playground_config, OVERLAY_STAGING_DIR + "/nginx.conf", OVERLAY_STAGING_DIR + "/webroot/index.html")
-    stage_start_bin(playground_config)
-    create_nginx_location_directives_for_bin_files(
-        playground_config,
-        get_bin_files_on_server_and_staged(playground_config),
-        OVERLAY_STAGING_DIR + "/nginx.conf",
-        OVERLAY_STAGING_DIR + "/webroot/index.html")
-
-def validate_files(root_dir):
-    validator = jsonschema.Draft3Validator(NATIVE_CLIENT_CONFIG_SCHEMA)
-
-    for dirpath, dnames, fnames in os.walk(root_dir):
-        for f in fnames:
-            path = os.path.join(dirpath, f)
-            if (path.endswith(".client-config.json")):
-                validator.validate(simplejson.loads(open(path).read()))
-
-def convert_markdown_to_ipython_notebook(markdown_file):
-    this_dir = os.path.dirname(os.path.realpath(__file__))
-    template_relative_path = os.path.join(this_dir, "./template/ipython.markdown.template")
-    markdown_string_array = map(lambda line: '"' + line + '\\n"', open(markdown_file).read().split("\n"))
-    markdown_string_array = ",\n".join(markdown_string_array)
-    ipython_markdown = Template(open(template_relative_path).read()).substitute({"markdown_string_array": markdown_string_array})
-    data_dir = os.path.join(OVERLAY_STAGING_DIR, "ipython-notebook-root/data")
-    os.makedirs(data_dir)
-    ipython_markdown_file = os.path.join(data_dir, os.path.basename(markdown_file).replace(".md", "") + ".ipynb")
-    f = open(ipython_markdown_file, 'w')
-    f.write(ipython_markdown)
-    f.close()
-
-def stage_generated_files(playground_config):
-    oogway_docs_dir = os.path.join(os.path.dirname(oogway.__file__), "../docs")
-    convert_markdown_to_ipython_notebook(os.path.join(oogway_docs_dir, "blocks.md"))
-
-def create_and_link_shared_dir(playground_config):
-    ssh_exec("file ipython-share || mkdir ipython-share")
-    ssh_exec("touch ipython-share/__init__.py")
-    ssh_exec("ln -nsf /home/ubuntu/ipython-share {}/ipython-notebook-root/data/share".format(pdir(playground_config.playground_name)))
-    scp_r(this_dir + "/misc/data_share_init.py", "{}/ipython-notebook-root/data/share/__init__.py".format(pdir(playground_config.playground_name)))
-
-def create_and_link_shared2_dir(playground_config):
-    ssh_exec("file ipython-share2 || mkdir ipython-share2")
-    ssh_exec("touch ipython-share2/__init__.py")
-    ssh_exec("ln -nsf /home/ubuntu/ipython-share2 {}/ipython-notebook-root/data/share2".format(pdir(playground_config.playground_name)))
-
-def create_and_link_share_file(playground_config):
-    ssh_exec("ln -nsf /home/ubuntu/share.py {}/ipython-notebook-root/data/share.py".format(pdir(playground_config.playground_name)))
-
-def create_and_link_all_notebook_dir(playground_config):
-    ssh_exec("file ipython-all || mkdir ipython-all")
-    ssh_exec("ln -nsf /home/ubuntu/playgrounds/{}/ipython-notebook-root/data /home/ubuntu/ipython-all/{}".format(playground_config.playground_name, playground_config.playground_name))
-    if playground_config.is_all_notebook:
-        ssh_exec("ln -nsf /home/ubuntu/ipython-all /home/ubuntu/playgrounds/{}/ipython-notebook-root/data/all".format(playground_config.playground_name, playground_config.playground_name))
-
-def clean_remote_dirs(playground_name):
-    ssh_exec("rm -rf {}/bin/game".format(pdir(playground_name)))
-
-def upload_staged_files(playground_name):
-    scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
-
-def reset_basic_auth_password(playground_name, password):
-    ssh_exec("/usr/bin/htpasswd -b -c {}/htpasswd_file {} {}".format(
-        pdir(playground_name),
-        playground_name,
-        password
-    ))
-
-def prepare_client_log(playground_name):
-    ssh_exec_all([
-        # Create a file for client logging that's owned by (and thus writeable by) the
-        # same unix user that nginx workers run as.
-        # There must be agreement between this path and the path in the playground's nginx.conf.
-        "touch {}/client.log".format(pdir(playground_name)),
-        "sudo chown www-data {}/client.log".format(pdir(playground_name))
-    ])
-
-def prepare_console_log(playground_name):
-    ssh_exec_all([
-        # Create a log dir to contains "tee's" of all console logs
-        "mkdir -p {}/tmux_console_logs".format(pdir(playground_name))
-    ])
-
-def reload_nginx():
-    ssh_exec("sudo /etc/init.d/nginx reload")
 
 def add_simple_subparser(f):
     command_name = f.__name__.replace("_", "-")
@@ -377,21 +72,6 @@ overlay_parser = subparsers.add_parser("overlay", help='{} overlay')
 overlay_parser.add_argument('playground_config_file', help='json config for playgrounds')
 overlay_parser.set_defaults(func=overlay)
 
-def refresh_ipython(args):
-    ssh_exec_all([
-        "mkdir -p {}".format(ipython_data_dir(args.playground_name)),
-        "rm -rf {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
-        "mkdir -p {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
-        "cp -r mcpi/mcpi {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
-        "cp -r mcgamedata/mcgamedata {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
-        "cp -r oogway/oogway {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
-        "mkdir -p {}/ipython-notebook-root/lib/codeshare".format(pdir(args.playground_name))
-    ])
-    scp_r(this_dir + "/codeshare/extract.py", "{}/ipython-notebook-root/lib/codeshare/".format(pdir(args.playground_name)))
-    scp_r(this_dir + "/codeshare/ipynb_util.py", "{}/ipython-notebook-root/lib/codeshare/".format(pdir(args.playground_name)))
-    scp_r(this_dir + "/codeshare/document.py", "{}/ipython-notebook-root/lib/codeshare/".format(pdir(args.playground_name)))
-add_simple_subparser(refresh_ipython)
-
 def create(args):
     ssh_exec("mkdir -p {}".format(pdir(args.playground_name)))
     copy_minecraft_server_files(args.playground_name)
@@ -403,34 +83,8 @@ create_parser = subparsers.add_parser("create", help='{} overlay')
 create_parser.add_argument('playground_config_file', help='json config for playgrounds')
 create_parser.set_defaults(func=create)
 
-def tmux_kill_command(session_name):
-    # tmux sends sighup (weird), which I believe is responsible for java sometimes
-    # outliving its tmux session parent.
-    # so, send sigterm to children of session, before running tmux kill-session
-    return "tmux list-panes -s -F '#{pane_pid}' -t " + session_name + " | xargs -r kill; tmux kill-session -t " + session_name + " || true"
-
-def tmux_kill(session_name):
-    if does_tmux_session_exist(session_name):
-        ssh_exec(tmux_kill_command(session_name))
-    else:
-        print("tmux session '{}' not found, doing nothing.".format(session_name))
-
 def kill_if_listening_on_port(port_number):
     ssh_exec("fuser -vk {}/tcp || true".format(port_number))
-
-def tmux_start(playground_name, session_suffix, script_name):
-    session_name = playground_name + session_suffix
-    if does_tmux_session_exist(session_name):
-        print("tmux session '{}' found, doing nothing.".format(session_name))
-    else:
-        ssh_exec(tmux_start_script_path(playground_name, script_name))
-
-def does_tmux_session_exist(session_name):
-    output = ssh_get("tmux ls | egrep '^" + session_name + ": ' || true").strip()
-    if session_name in output:
-        return True
-    else:
-        return False
 
 def stop_ipython(args):
     tmux_kill(args.playground_name + "-py")
@@ -447,6 +101,65 @@ add_simple_subparser(start_ipython)
 def start_minecraft(args):
     tmux_start(args.playground_name, "-mc", "tmux_restart_minecraft_server")
 add_simple_subparser(start_minecraft)
+
+def refresh_ipython(args):
+    ssh_exec_all([
+        "mkdir -p {}".format(ipython_data_dir(args.playground_name)),
+        "rm -rf {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
+        "mkdir -p {}/ipython-notebook-root/lib".format(pdir(args.playground_name)),
+        "cp -r mcpi/mcpi {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
+        "cp -r mcgamedata/mcgamedata {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
+        "cp -r oogway/oogway {}/ipython-notebook-root/lib/".format(pdir(args.playground_name)),
+        "mkdir -p {}/ipython-notebook-root/lib/codeshare".format(pdir(args.playground_name))
+    ])
+    scp_r(this_dir + "/codeshare/extract.py", "{}/ipython-notebook-root/lib/codeshare/".format(pdir(args.playground_name)))
+    scp_r(this_dir + "/codeshare/ipynb_util.py", "{}/ipython-notebook-root/lib/codeshare/".format(pdir(args.playground_name)))
+    scp_r(this_dir + "/codeshare/document.py", "{}/ipython-notebook-root/lib/codeshare/".format(pdir(args.playground_name)))
+add_simple_subparser(refresh_ipython)
+
+def copy_ipynb(args):
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    source_playground_config = load_playground_config(args.source_playground_name, args.playground_config_file)
+    quick_backup_ipython_notebooks(args.playground_name)
+    existing_ipynb_wildcard = os.path.join(ipython_data_dir(args.playground_name), args.ipynb_wildcard + ".ipynb")
+    ipynb_wildcard = os.path.join(ipython_data_dir(args.source_playground_name), args.ipynb_wildcard + ".ipynb")
+    ipynbs = ssh_get("ls {}".format(ipynb_wildcard)).strip().split("\n")
+
+    if len(ipynbs) == 0:
+        raise Exception("No ipython notebooks found matching {}".format(ipynb_wildcard))
+    else:
+        print("will copy:")
+        for ipynb in ipynbs:
+            print(ipynb)
+    ssh_exec("rm {} || true".format(existing_ipynb_wildcard))
+    ssh_exec("cp {} {}/{}".format(ipynb_wildcard, ipython_data_dir(args.playground_name), args.dest_subdir))
+
+    for ipynb in ipynbs:
+        ipynb_relative_path = ipynb.replace(ipython_data_dir(args.source_playground_name) + "/", "")
+        ipynb_relative_path = args.dest_subdir + "/" + ipynb_relative_path
+        create_client_url_switch_scripts(source_playground_config, playground_config, ipynb_relative_path)
+
+    ssh_exec("mkdir -p {}".format(pdir(args.playground_name) + "/bin/url"))
+    scp_r(DEST_URL_BIN_PREP_DIR + "/.", pdir(args.playground_name) + "/bin/url")
+    ssh_exec("mkdir -p {}".format(pdir(args.source_playground_name) + "/bin/url"))
+    scp_r(SOURCE_URL_BIN_PREP_DIR + "/.", pdir(args.source_playground_name) + "/bin/url")
+
+    stage_overlay_files(source_playground_config)
+    create_nginx_location_directives_for_bin_files(
+        source_playground_config,
+        get_bin_files_on_server_and_staged(source_playground_config),
+        OVERLAY_STAGING_DIR + "/nginx.conf",
+        OVERLAY_STAGING_DIR + "/webroot/index.html")
+    scp_r(OVERLAY_STAGING_DIR + "/nginx.conf", "{}/nginx.conf".format(pdir(args.source_playground_name)))
+    scp_r(OVERLAY_STAGING_DIR + "/webroot/index.html", "{}/webroot/index.html".format(pdir(args.source_playground_name)))
+    reload_nginx()
+
+copy_ipynb_parser = subparsers.add_parser("copy-ipynb", help='{} copy-ipynb')
+copy_ipynb_parser.add_argument('source_playground_name', help='the playground that has the ipython notebook(s)')
+copy_ipynb_parser.add_argument('ipynb_wildcard', help='wildcard that matches ipython notebook(s)')
+copy_ipynb_parser.add_argument('dest_subdir', help='destination subdirectory')
+copy_ipynb_parser.add_argument('playground_config_file', help='playground config file')
+copy_ipynb_parser.set_defaults(func=copy_ipynb)
 
 def restart_ipython(args):
     stop_ipython(args)
@@ -514,307 +227,9 @@ def destroy(args):
     ssh_exec("rm -rf {}".format(pdir(args.playground_name)))
 add_simple_subparser(destroy)
 
-def grpc_craft_python_client_lib_dir(playground_name):
-    return ipython_lib_dir(playground_name) + "/oogway_client"
-
-def ipython_lib_dir(playground_name):
-    return "{}/ipython-notebook-root/lib".format(pdir(playground_name))
-
-def ipython_data_dir(playground_name):
-    return "{}/ipython-notebook-root/data".format(pdir(playground_name))
-
-def minecraft_world_dir(playground_name):
-    return "{}/minecraft-server/world".format(pdir(playground_name))
-
-# TODO: backup ipynb's
-# TODO: delete ipynb's with name match
-# TODO: ...then copy the ipynb's
-
-
-CLIENT_CONFIG_TEMPLATE_DIR = "playground-overlay/webroot"
-DEST_URL_BIN_PREP_DIR = "/tmp/playground-url-bin-dest"
-SOURCE_URL_BIN_PREP_DIR = "/tmp/playground-url-bin-source"
-
-# make client config template files and scripts on the server
-# that allow us to signal to native clients that they should switch
-# to the ipython notebook url for the ipynb file in question
-def create_client_url_switch_scripts(source_playground_config, dest_playground_config, ipynb_relative_path):
-    shutil.rmtree(DEST_URL_BIN_PREP_DIR, ignore_errors=True)
-    os.makedirs(DEST_URL_BIN_PREP_DIR)
-    shutil.rmtree(SOURCE_URL_BIN_PREP_DIR, ignore_errors=True)
-    os.makedirs(SOURCE_URL_BIN_PREP_DIR)
-
-    for dirpath, dnames, fnames in os.walk(CLIENT_CONFIG_TEMPLATE_DIR):
-        for f in fnames:
-            path = os.path.join(dirpath, f)
-            if (path.endswith(".client-config.json.template")):
-                client_config_name = "switch_client_browser_to_" + re.sub(r"[^A-Za-z0-9]+", "_", ipynb_relative_path) + "_" + f
-
-                config = json.loads(open(path).read())
-                # example: http://a.giantpurplekitty.com/foo/python/notebooks/Programming2.7%20-%20Putting%20it%20all%20together.ipynb
-                config["browser_window"]["url"] = \
-                    'http://${fully_qualified_domain_name}/${playground_name}/python/notebooks/' + \
-                    urllib.quote(ipynb_relative_path)
-                client_config_str = json.dumps(config, indent=2)
-                fw = open(DEST_URL_BIN_PREP_DIR + "/" + client_config_name, 'w')
-                fw.write(client_config_str)
-                fw.close()
-
-                # script for the playground we're copying TO, that makes this ipynb the
-                # url the native client should load next time it polls for config changes.
-                remote_config_path = client_config_name.replace(".template", "")
-                remote_webroot_path = f.replace(".template", "")
-                switch_to_url_bash = "\n".join([
-                    "#/bin/bash -ex",
-                    "",
-                    "this_dir=$(dirname $0)",
-                    "cp $this_dir/{} $this_dir/../../webroot/{}".format(remote_config_path, remote_webroot_path),
-                    ""
-                ])
-                switch_url_script_file_name = client_config_name.replace(".client-config.json.template", "")
-                write_executable_file(switch_to_url_bash, DEST_URL_BIN_PREP_DIR + "/" + switch_url_script_file_name)
-
-                # script for the playground we're copying FROM, that will invoke all of
-                # the individual scripts of this name...allowing us to change many different
-                # playground urls at once.
-                switch_all_script_name = switch_url_script_file_name.replace("switch_client_browser_to", "switch_all_client_browsers_to")
-                switch_all_bash = "\n".join([
-                    "#/bin/bash -ex",
-                    "",
-                    "this_dir=$(dirname $0)",
-                    "find $this_dir/../../../*/bin/url/ -name {} | xargs -0 bash -c".format(switch_url_script_file_name),
-                    ""
-                ])
-                write_executable_file(switch_all_bash, SOURCE_URL_BIN_PREP_DIR + "/" + switch_all_script_name)
-    evaluate_and_replace_templates(DEST_URL_BIN_PREP_DIR, dest_playground_config.to_dict())
-
-def quick_backup_ipython_notebooks(playground_name):
-    backup_dir = os.path.join("ipython_quick_backups", time.strftime("%Y%m%dT%H%M%S") + "-" + playground_name)
-    backup_ipython_notebooks(playground_name, backup_dir)
-
-def copy_ipynb(args):
-    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
-    source_playground_config = load_playground_config(args.source_playground_name, args.playground_config_file)
-    quick_backup_ipython_notebooks(args.playground_name)
-    existing_ipynb_wildcard = os.path.join(ipython_data_dir(args.playground_name), args.ipynb_wildcard + ".ipynb")
-    ipynb_wildcard = os.path.join(ipython_data_dir(args.source_playground_name), args.ipynb_wildcard + ".ipynb")
-    ipynbs = ssh_get("ls {}".format(ipynb_wildcard)).strip().split("\n")
-
-    if len(ipynbs) == 0:
-        raise Exception("No ipython notebooks found matching {}".format(ipynb_wildcard))
-    else:
-        print("will copy:")
-        for ipynb in ipynbs:
-            print(ipynb)
-    ssh_exec("rm {} || true".format(existing_ipynb_wildcard))
-    ssh_exec("cp {} {}/{}".format(ipynb_wildcard, ipython_data_dir(args.playground_name), args.dest_subdir))
-
-    for ipynb in ipynbs:
-        ipynb_relative_path = ipynb.replace(ipython_data_dir(args.source_playground_name) + "/", "")
-        ipynb_relative_path = args.dest_subdir + "/" + ipynb_relative_path
-        create_client_url_switch_scripts(source_playground_config, playground_config, ipynb_relative_path)
-
-    ssh_exec("mkdir -p {}".format(pdir(args.playground_name) + "/bin/url"))
-    scp_r(DEST_URL_BIN_PREP_DIR + "/.", pdir(args.playground_name) + "/bin/url")
-    ssh_exec("mkdir -p {}".format(pdir(args.source_playground_name) + "/bin/url"))
-    scp_r(SOURCE_URL_BIN_PREP_DIR + "/.", pdir(args.source_playground_name) + "/bin/url")
-
-    stage_overlay_files(source_playground_config)
-    create_nginx_location_directives_for_bin_files(
-        source_playground_config,
-        get_bin_files_on_server_and_staged(source_playground_config),
-        OVERLAY_STAGING_DIR + "/nginx.conf",
-        OVERLAY_STAGING_DIR + "/webroot/index.html")
-    scp_r(OVERLAY_STAGING_DIR + "/nginx.conf", "{}/nginx.conf".format(pdir(args.source_playground_name)))
-    scp_r(OVERLAY_STAGING_DIR + "/webroot/index.html", "{}/webroot/index.html".format(pdir(args.source_playground_name)))
-    reload_nginx()
-
-copy_ipynb_parser = subparsers.add_parser("copy-ipynb", help='{} copy-ipynb')
-copy_ipynb_parser.add_argument('source_playground_name', help='the playground that has the ipython notebook(s)')
-copy_ipynb_parser.add_argument('ipynb_wildcard', help='wildcard that matches ipython notebook(s)')
-copy_ipynb_parser.add_argument('dest_subdir', help='destination subdirectory')
-copy_ipynb_parser.add_argument('playground_config_file', help='playground config file')
-copy_ipynb_parser.set_defaults(func=copy_ipynb)
-
-def backup_ipython_notebooks(playground_name, ipython_data_backup_dir):
-    print("backing up {} ipython notebooks to {}".format(playground_name, ipython_data_backup_dir))
-    ssh_exec_all([
-        "mkdir -p " + ipython_data_backup_dir,
-        "cp -r " + ipython_data_dir(playground_name) + "/* " + ipython_data_backup_dir + "/"
-    ])
-
-def get_all_playground_config():
-    all_config = {}
-    json_lines = ssh_get("cat playgrounds/*/playground.json").split("\n")
-    for line in json_lines:
-        p = PlaygroundConfig()
-        p.load_json(line)
-        all_config[p.playground_name] = p
-    return all_config
-
 def test_config_json(args):
     get_all_playground_config()
 add_simple_subparser(test_config_json)
-
-def tmux_new_session_command(working_dir, session_name, command):
-    return "cd {} && /usr/bin/tmux new-session -s {} -d '{}'".format(working_dir, session_name, command)
-
-# TODO: make this a top-level command
-
-def tmux_playground_start_command(playground_name, subdir, tmux_session_suffix, command):
-    return tmux_new_session_command(
-                pdir(playground_name) + "/" + subdir,
-                playground_name + "-" + tmux_session_suffix,
-                command)
-
-def at_reboot_tmux_crontab_line(playground_name, subdir, tmux_session_suffix, command):
-    return "@reboot " + tmux_playground_start_command(playground_name, subdir, tmux_session_suffix, command)
-
-def tmux_send_command(playground_name, command):
-    return "tmux send -t " + playground_name + "-mc \"" + command + "\" ENTER"
-
-def tmux_kill_bash_fragment(session_name):
-    return "\n".join([
-        "exit_code=$(tmux ls | egrep '^{}: ' > /dev/null; echo $?)".format(session_name),
-        "",
-        "if [ \"$exit_code\" = \"0\" ]; then",
-        "  echo \"found {} session, killing...\"".format(session_name),
-        "  " + tmux_kill_command(session_name),
-        "else",
-        "  echo \"no {} session found\"".format(session_name),
-        "fi"
-    ])
-
-def tmux_new_session_command_no_cd(session_name, command, console_log_path):
-    return "/usr/bin/tmux new-session -s {} -d '{} 2>&1 | tee -a {}'".format(session_name, command, console_log_path)
-
-def tmux_playground_start_command_no_cd(playground_name, tmux_session_suffix, command):
-    session_name = playground_name + "-" + tmux_session_suffix
-    return tmux_new_session_command_no_cd(
-                playground_name + "-" + tmux_session_suffix,
-                command,
-                abs_pdir(playground_name) + "/tmux_console_logs/" + session_name + ".log")
-
-def tmux_start_script_path(playground_name, script_name):
-    return "{}/bin/tmux/{}".format(abs_pdir(playground_name), script_name)
-
-def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_session_suffix, start_command, script_name, run_before=None):
-    session_name = playground_name + "-" + tmux_session_suffix
-
-    lines = [tmux_kill_bash_fragment(session_name)]
-
-    if run_before!=None:
-        lines.extend([
-            "",
-            run_before
-        ])
-
-    lines.extend([
-        "",
-        tmux_playground_start_command_no_cd(playground_name, tmux_session_suffix, start_command),
-        ""
-    ])
-
-    write_playground_bash_script_to_staging_dir(lines, tmux_start_script_path(playground_name, script_name))
-
-def stage_start_bin(playground_config):
-    if playground_config.minecraft_server_port:
-
-        if playground_config.minecraft_server_variant not in [const.MINECRAFT_SERVER_VARIANT_SPONGE_MCPI, const.MINECRAFT_SERVER_VARIANT_SPIGOT_GRPC]:
-            raise Exception( \
-                "Every playground that runs a minecraft server " + \
-                "MUST declare a valid variant. Actual: {}".format(playground_config.minecraft_server_variant))
-
-        # minecraft start script and tmux restart script are intentionally named the same, 
-        # so that one replaces the other (depending on selected variant)
-
-        variant_message = "echo 'STARTING VARIANT: {}'".format(playground_config.minecraft_server_variant)
-
-        if playground_config.minecraft_server_variant == const.MINECRAFT_SERVER_VARIANT_SPONGE_MCPI:
-            write_playground_bash_script_to_staging_dir([
-                "cd {}/minecraft-server".format(abs_pdir(playground_config.playground_name)),
-                variant_message,
-                "exec java -Xmx8g -Xms1g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -XX:+PrintAdaptiveSizePolicy -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:minecraft-jvm-gc.log -jar sponge-minecraft-server.jar run"
-            ], "/bin/start/start_minecraft_server")
-
-        if playground_config.minecraft_server_variant == const.MINECRAFT_SERVER_VARIANT_SPIGOT_GRPC:
-            # server_id set purposefully at the front of the command for easy htop'ing
-            write_playground_bash_script_to_staging_dir([
-                "cd {}".format(spigot_dir_for_playground(playground_config.playground_name)),
-                variant_message,
-                "exec java -Xmx8g -Xms1g -Dserver_id=SPIGOTGRPC_{} -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -XX:+PrintAdaptiveSizePolicy -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:spigot-jvm-gc.log -jar spigot.jar".format(playground_config.playground_name)
-            ], "/bin/start/start_minecraft_server")
-
-        if not playground_config.minecraft_startup_commands or not len(playground_config.minecraft_startup_commands) > 0:
-            raise Exception( \
-                "Every playground that runs a minecraft server " + \
-                "MUST have at least one entry in minecraft_startup_commands")            
-
-        minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_config.playground_name, c), playground_config.minecraft_startup_commands))
-
-        # this works for spigot servers as well. whatever "minecraft" server happens to be
-        # running will have these console commands run on it.
-
-        write_playground_bash_script_to_staging_dir([
-            "cd {}/minecraft-server".format(abs_pdir(playground_config.playground_name)),
-            "while ! nc -q 1 localhost " + str(playground_config.minecraft_server_port) + " </dev/null; do sleep 1; echo waiting; done && echo started && " + minecraft_console_commands
-        ], "/bin/start/run_minecraft_startup_console_commands")
-
-        write_tmux_session_restart_script_to_staging_dir(
-            playground_config.playground_name,
-            "mc-init",
-            "{}/bin/start/run_minecraft_startup_console_commands".format(abs_pdir(playground_config.playground_name)),
-            "tmux_run_minecraft_startup_console_commands")
-
-        # spawn off a tmux restart of minecraft console command runner, before starting the minecraft server.
-        # so, the command script poll the minecraft port, and once it successfully connects, it then
-        # executes the startup commands against the (presumably now active) minecraft server console.
-        #
-        # this is the best way I currently know of to achieve a "minecraft server console startup script",
-        # and it's not good.
-        write_tmux_session_restart_script_to_staging_dir(
-            playground_config.playground_name,
-            "mc",
-            "{}/bin/start/start_minecraft_server".format(abs_pdir(playground_config.playground_name)),
-            "tmux_restart_minecraft_server",
-            run_before="nohup {}/bin/tmux/tmux_run_minecraft_startup_console_commands &".format(abs_pdir(playground_config.playground_name)))
-
-        if playground_config.minecraft_startup_commands and len(playground_config.minecraft_startup_commands) > 0:
-            minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_config.playground_name, c), playground_config.minecraft_startup_commands))
-
-            # this works for spigot servers as well. whatever "minecraft" server happens to be
-            # running will have these console commands run on it.
-
-            write_playground_bash_script_to_staging_dir([
-                "cd {}/minecraft-server".format(abs_pdir(playground_config.playground_name)),
-                "while ! nc -q 1 localhost " + str(playground_config.minecraft_server_port) + " </dev/null; do sleep 1; echo waiting; done && echo started && " + minecraft_console_commands
-            ], "/bin/start/run_minecraft_startup_console_commands")
-
-            write_tmux_session_restart_script_to_staging_dir(
-                playground_config.playground_name,
-                "mc-init",
-                "{}/bin/start/run_minecraft_startup_console_commands".format(abs_pdir(playground_config.playground_name)),
-                "tmux_run_minecraft_startup_console_commands")
-
-    if playground_config.ipython_notebook_server_http_port:
-        write_playground_bash_script_to_staging_dir([
-            "cd {}/ipython-notebook-root".format(abs_pdir(playground_config.playground_name)),
-            "exec ../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py --ipython-dir=."
-        ], "/bin/start/start_ipython_notebook_server")
-
-        write_tmux_session_restart_script_to_staging_dir(
-            playground_config.playground_name,
-            "py",
-            "{}/bin/start/start_ipython_notebook_server".format(abs_pdir(playground_config.playground_name)),
-            "tmux_restart_ipython_notebook_server")
-
-def get_tmux_start_scripts():
-    # get all executable files in all playground bin/tmux dirs, absolute paths
-    return ssh_get("find playgrounds/*/bin/tmux -type f -executable | xargs -r -L 1 readlink -f").strip().split("\n")
-
-def get_tmux_console_log_files():
-    # get all executable files in all playground bin/tmux dirs, absolute paths
-    return ssh_get("find playgrounds/*/tmux_console_logs/*.log -type f | xargs -r -L 1 readlink -f").strip().split("\n")
 
 def write_crontab(args):
     crontab_lines = [
@@ -832,72 +247,6 @@ def write_crontab(args):
     scp_r("/tmp/crontab", "new-crontab")
     ssh_exec("cat new-crontab | crontab -")
 add_simple_subparser(write_crontab)
-
-def rsyslog_monitor_conf_lines(label, log_path, facility):
-    # I tried using the "modern" config, but it's buggy - the
-    # facility option (local6) was being ignored.
-    return [
-        "",
-        "$InputFileName {}".format(log_path),
-        "$InputFileTag {}:".format(label),
-        "$InputFileStateFile {}-log-state".format(label),
-        "$InputFileSeverity info",
-        "$InputFileFacility {}".format(facility),
-        "$InputRunFileMonitor",
-        "$InputFilePollInterval 1"
-    ]
-
-def write_rsyslog_conf(args):
-    rsyslog_conf_lines = [
-        "local5.* /var/log/server.log",
-        "local6.* /var/log/client.log",
-        "",
-        "$ModLoad imfile"
-    ]
-    all_config = get_all_playground_config()
-    for playground_name in all_config:
-        rsyslog_conf_lines.extend(
-            rsyslog_monitor_conf_lines(
-                playground_name + "-client",
-                "/home/ubuntu/playgrounds/{}/client.log".format(playground_name),
-                "local6"))
-
-    rsyslog_conf_lines.extend(rsyslog_monitor_conf_lines("nginx-access", "/var/log/nginx/access.log", "local5"))
-    rsyslog_conf_lines.extend(rsyslog_monitor_conf_lines("nginx-error", "/var/log/nginx/error.log", "local5"))
-
-    # go look for all tmux console logs and monitor them
-    for f in get_tmux_console_log_files():
-        label = os.path.basename(f).replace(".log", "")
-        rsyslog_conf_lines.extend(rsyslog_monitor_conf_lines(label, f, "local5"))
-
-    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
-    loggly = [
-        "",
-        "# send above logging to loggly",
-        "$WorkDirectory /var/spool/rsyslog # where to place spool files",
-        "$ActionQueueFileName fwdRule1     # unique name prefix for spool files",
-        "$ActionQueueMaxDiskSpace 1g       # 1gb space limit (use as much as possible)",
-        "$ActionQueueSaveOnShutdown on     # save messages to disk on shutdown",
-        "$ActionQueueType LinkedList       # run asynchronously",
-        "$ActionResumeRetryCount -1        # infinite retries if host is down",
-        "",
-        'template(name="LogglyFormat" type="string" string="<%pri%>%protocol-version% %timestamp:::date-rfc3339% %HOSTNAME% %app-name% %procid% %msgid% [{}@41058] %msg%\\n")'.format(playground_config.loggly_token),
-        "",
-        'local5.*;local6.* action(type="omfwd" protocol="tcp" target="logs-01.loggly.com" port="514" template="LogglyFormat")'
-    ]
-    rsyslog_conf_lines.extend(loggly)
-
-    f = open("/tmp/90-playground-rsyslog.conf", 'w')
-    f.write("\n".join(rsyslog_conf_lines) + "\n")
-    f.close()
-    scp_r("/tmp/90-playground-rsyslog.conf", "/tmp/90-playground-rsyslog.conf")
-    ssh_exec_all([
-        "sudo mv /tmp/90-playground-rsyslog.conf /etc/rsyslog.d/90-playground-rsyslog.conf",
-        "sudo pkill rsyslogd" # init.d force-reload, restart, stop, etc seem to do nothing. ugh.
-    ])
-
-def write_ipython_notebook_html():
-    scp_r("template/notebook.html.template", ".python-virtualenv/local/lib/python2.7/site-packages/IPython/html/templates/notebook.html")
 
 args = parser.parse_args()
 args.func(args)
