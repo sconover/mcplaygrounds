@@ -1,10 +1,8 @@
 c = get_config()
 c.IPKernelApp.exec_lines = [
-  "from mcpi import minecraft",
-  "def connect(): return minecraft.Minecraft.create(port=${raspberry_juice_sponge_plugin_port})",
-  "from mcgamedata import block, living",
-  "from oogway.turtle import *",
-  "init(connect, player='${initial_minecraft_player_name_for_oogway}')",
+  "from oogway_client.oogway_client.turtle import *",
+  "from grpccraft.world_metadata_pb2 import Material",
+  "init('${initial_minecraft_player_name_for_oogway}', ${grpc_craft_port})",
   "%load_ext autoreload",
   "%autoreload 2",
   "import share"

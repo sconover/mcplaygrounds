@@ -20,7 +20,7 @@ def tmux_start(playground_name, session_suffix, script_name):
     if does_tmux_session_exist(session_name):
         print("tmux session '{}' found, doing nothing.".format(session_name))
     else:
-        ssh_exec(tmux_start_script_path(playground_name, script_name))
+        ssh_exec(abs_tmux_start_script_path(playground_name, script_name))
 
 def does_tmux_session_exist(session_name):
     output = ssh_get("tmux ls | egrep '^" + session_name + ": ' || true").strip()
@@ -68,7 +68,10 @@ def tmux_playground_start_command_no_cd(playground_name, tmux_session_suffix, co
                 command,
                 abs_pdir(playground_name) + "/tmux_console_logs/" + session_name + ".log")
 
-def tmux_start_script_path(playground_name, script_name):
+def relative_tmux_start_script_path(playground_name, script_name):
+    return "/bin/tmux/{}".format(script_name)
+
+def abs_tmux_start_script_path(playground_name, script_name):
     return "{}/bin/tmux/{}".format(abs_pdir(playground_name), script_name)
 
 def write_playground_bash_script_to_staging_dir(script_body_lines, relative_path, bash_switches=" -ex"):
@@ -93,8 +96,7 @@ def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_sessi
         tmux_playground_start_command_no_cd(playground_name, tmux_session_suffix, start_command),
         ""
     ])
-
-    write_playground_bash_script_to_staging_dir(lines, tmux_start_script_path(playground_name, script_name))
+    write_playground_bash_script_to_staging_dir(lines, relative_tmux_start_script_path(playground_name, script_name))
 
 def stage_start_bin(playground_config):
     if playground_config.minecraft_server_port:
@@ -121,7 +123,7 @@ def stage_start_bin(playground_config):
             write_playground_bash_script_to_staging_dir([
                 "cd {}".format(spigot_dir_for_playground(playground_config.playground_name)),
                 variant_message,
-                "exec java -Xmx8g -Xms1g -Dserver_id=SPIGOTGRPC_{} -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -XX:+PrintAdaptiveSizePolicy -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:spigot-jvm-gc.log -jar spigot.jar".format(playground_config.playground_name)
+                "exec " + spigot_server_startup_java_command(playground_config)
             ], "/bin/start/start_minecraft_server")
 
         if not playground_config.minecraft_startup_commands or not len(playground_config.minecraft_startup_commands) > 0:
