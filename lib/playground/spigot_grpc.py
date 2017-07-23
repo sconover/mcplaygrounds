@@ -15,7 +15,7 @@ def copy_spigot_server_files(playground_name):
     ssh_exec("mkdir -p {} && cp `{}` {}".format(d, const.SPIGOT_LATEST_JAR_LOCATOR_COMMAND, j))
 
 def spigot_server_startup_java_command(playground_config):
-	return "java -Xmx8g -Xms1g " + \
+	return "java -Xmx8g -Xms256m " + \
 		"-Dserver_id=SPIGOTGRPC_{} ".format(playground_config.playground_name) + \
 		"-Dgrpc.port={} ".format(playground_config.grpc_craft_port) + \
 		"-Djava.net.preferIPv4Stack=true " + \
