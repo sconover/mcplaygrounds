@@ -15,6 +15,7 @@ class PlaygroundConfig(BaseSettingsClass):
         self.minecraft_startup_commands = None
         self.raspberry_juice_sponge_plugin_port = None
         self.grpc_craft_port = None
+        self.sentry_io_client_key_aka_dsn = None
         self.ipython_notebook_server_http_port = None
         self.web_password = None
         self.initial_minecraft_player_name_for_oogway = None
@@ -46,6 +47,7 @@ DEFAULT_CONFIG.teleport_destinations = {}
 DEFAULT_CONFIG.minecraft_server_port = False
 DEFAULT_CONFIG.raspberry_juice_sponge_plugin_port = False
 DEFAULT_CONFIG.grpc_craft_port = False
+DEFAULT_CONFIG.sentry_io_client_key_aka_dsn = False
 DEFAULT_CONFIG.minecraft_server_variant = "sponge_mcpi" # also, "spigot_grpc"
 DEFAULT_CONFIG.personal_x_1 = 0
 DEFAULT_CONFIG.personal_z_1 = 0

@@ -119,12 +119,20 @@ def stage_start_bin(playground_config):
             ], "/bin/start/start_minecraft_server")
 
         if playground_config.minecraft_server_variant == const.MINECRAFT_SERVER_VARIANT_SPIGOT_GRPC:
-            # server_id set purposefully at the front of the command for easy htop'ing
-            write_playground_bash_script_to_staging_dir([
+            lines = []
+            if playground_config.sentry_io_client_key_aka_dsn!=None and playground_config.sentry_io_client_key_aka_dsn!=False:
+                lines.extend([
+                    "",
+                    "export SENTRY_DSN='{}'".format(playground_config.sentry_io_client_key_aka_dsn),
+                    ""
+                ])
+            lines.extend([
                 "cd {}".format(spigot_dir_for_playground(playground_config.playground_name)),
                 variant_message,
                 "exec " + spigot_server_startup_java_command(playground_config)
-            ], "/bin/start/start_minecraft_server")
+            ])
+            # server_id set purposefully at the front of the command for easy htop'ing
+            write_playground_bash_script_to_staging_dir(lines, "/bin/start/start_minecraft_server")
 
         if not playground_config.minecraft_startup_commands or not len(playground_config.minecraft_startup_commands) > 0:
             raise Exception( \
