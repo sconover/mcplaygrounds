@@ -125,9 +125,12 @@ def all_ssh_options():
 def ssh_exec_all(commands):
     ssh_exec(" && ".join(commands))
 
+def ssh_parts_without_user_at_host():
+    return ['/usr/bin/ssh'] + all_ssh_options()
+
 def ssh_parts():
     server_config = load_current_server_config()
-    return ['/usr/bin/ssh'] + all_ssh_options() + [server_config.user_at_host]
+    return ssh_parts_without_user_at_host() + [server_config.user_at_host]
 
 def ssh_command_parts(remote_command):
     parts = ssh_parts()
@@ -140,6 +143,22 @@ def ssh_exec(remote_command):
     print("> {}".format(cmd))
     sys.stderr.write("< ")
     if subprocess.call(parts)!=0:
+        raise Exception("FAILED: {}".format(cmd))
+
+def rsync_exec(local_dir, remote_dir, more_flags=""):
+    server_config = load_current_server_config()
+    remote_dir_with_user_at_host = server_config.user_at_host + ":" + remote_dir
+    ssh_parts = ssh_parts_without_user_at_host()
+    dash_e = "'" + " ".join(ssh_parts) + "'"
+    rsync_parts = [
+        "/usr/bin/rsync", "-avz", more_flags, 
+        "-e " + dash_e, 
+        local_dir, remote_dir_with_user_at_host
+    ]
+    cmd = " ".join(rsync_parts)
+    print("> {}".format(cmd))
+    sys.stderr.write("< ")
+    if subprocess.call(cmd, shell=True)!=0:
         raise Exception("FAILED: {}".format(cmd))
 
 def ssh_get(remote_command):

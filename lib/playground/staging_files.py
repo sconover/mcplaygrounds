@@ -16,6 +16,7 @@ from lib.playground.ipython import *
 from lib.playground.nginx import *
 from lib.playground.process_management import *
 from lib.playground.teleport import *
+from lib.playground.util import *
 
 def validate_files(root_dir):
     validator = jsonschema.Draft3Validator(NATIVE_CLIENT_CONFIG_SCHEMA)
@@ -80,4 +81,6 @@ def clean_remote_dirs(playground_name):
     ssh_exec("rm -rf {}/bin/game".format(pdir(playground_name)))
 
 def upload_staged_files(playground_name):
-    scp_r(OVERLAY_STAGING_DIR + "/.", pdir(playground_name))
+    rsync_nondestructive(OVERLAY_STAGING_DIR + "/", pdir(playground_name) + "/")
+    print("Now, cleaning of the playground bin/ tree...")
+    rsync_destructive_be_careful_using_this(OVERLAY_STAGING_DIR + "/bin/", pdir(playground_name) + "/bin/")

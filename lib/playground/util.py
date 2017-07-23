@@ -1,7 +1,7 @@
 import os
 import stat
 
-from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, scp_r_remote_to_local
+from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, scp_r_remote_to_local, rsync_exec
 from lib.playground_config import PlaygroundConfig, load_playground_config
 
 OVERLAY_STAGING_DIR = "/tmp/playground-staging"
@@ -52,3 +52,15 @@ def rewrite_file_with_multiline_regex_replace(path, regex, replace_with):
     f = open(path, 'w')
     f.write(content)
     f.close()
+
+def backup_dir_to_tmp(dir_to_backup):
+    ssh_exec("d=/tmp/backup-before-rsync-`date +%Y-%m-%dT%H-%M-%S-%N` && if [ -d {} ]; then mkdir $d && cp -r {} $d; fi".format(dir_to_backup, dir_to_backup))
+
+def rsync_destructive_be_careful_using_this(local_src_dir, remote_dest_dir):
+    backup_dir_to_tmp(remote_dest_dir) # this is your get out of jail free card
+    ssh_exec("mkdir -p {}".format(remote_dest_dir))
+    rsync_exec(local_src_dir, remote_dest_dir, more_flags="--delete")
+
+def rsync_nondestructive(local_src_dir, remote_dest_dir):
+    ssh_exec("mkdir -p {}".format(remote_dest_dir))
+    rsync_exec(local_src_dir, remote_dest_dir)

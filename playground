@@ -231,6 +231,10 @@ def test_config_json(args):
     get_all_playground_config()
 add_simple_subparser(test_config_json)
 
+def test_rsync_destructive(args):
+    rsync_destructive_be_careful_using_this("/tmp/foo1/", "/tmp/foo1/")
+add_simple_subparser(test_rsync_destructive)
+
 def write_crontab(args):
     crontab_lines = [
         "55 10 * * * sudo shutdown -h now"
