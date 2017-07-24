@@ -64,6 +64,7 @@ def overlay(args):
     reset_basic_auth_password(args.playground_name, playground_config.web_password)
     prepare_client_log(args.playground_name)
     prepare_console_log(args.playground_name)
+    set_directory_execute(args.playground_name) # something was stripping execute...um not sure what.
     reload_nginx()
     write_crontab(args)
     write_rsyslog_conf(args)

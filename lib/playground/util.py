@@ -64,3 +64,6 @@ def rsync_destructive_be_careful_using_this(local_src_dir, remote_dest_dir):
 def rsync_nondestructive(local_src_dir, remote_dest_dir):
     ssh_exec("mkdir -p {}".format(remote_dest_dir))
     rsync_exec(local_src_dir, remote_dest_dir)
+
+def set_directory_execute(playground_name):
+    ssh_exec("find {} -type d | xargs chmod a+x".format(pdir(playground_name)))
