@@ -63,7 +63,9 @@ def seed_staging_dir(staging_dir, overlay_dir, template_vars):
     evaluate_and_replace_templates(staging_dir, template_vars)
 
 def stage_overlay_files(playground_config):
-    seed_staging_dir(OVERLAY_STAGING_DIR, "playground-overlay", playground_config.to_dict())
+    template_vars = playground_config.to_dict()
+    template_vars['grpc_craft_executable_root_dir'] = spigot_executable_root_dir_for_playground(playground_config.playground_name)
+    seed_staging_dir(OVERLAY_STAGING_DIR, "playground-overlay", template_vars)
     playground_config.write_to_file("{}/playground.json".format(OVERLAY_STAGING_DIR))
     validate_files(OVERLAY_STAGING_DIR)
     create_game_commands(playground_config, OVERLAY_STAGING_DIR + "/nginx.conf", OVERLAY_STAGING_DIR + "/webroot/index.html")

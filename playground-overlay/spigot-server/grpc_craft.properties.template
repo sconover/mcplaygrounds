@@ -1,3 +1,4 @@
 grpc.port=${grpc_craft_port}
 admin.web.port=${grpc_craft_admin_web_port}
 sentry.dsn=${sentry_io_client_key_aka_dsn}
+executable.root.dir=${grpc_craft_executable_root_dir}

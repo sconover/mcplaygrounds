@@ -3,6 +3,9 @@ from lib.playground.util import *
 def spigot_dir_for_playground(playground_name):
     return "{}/spigot-server".format(abs_pdir(playground_name))
 
+def spigot_executable_root_dir_for_playground(playground_name):
+    return "{}/spigot-server/bin".format(abs_pdir(playground_name))
+
 def spigot_jar_for_playground(playground_name):
     return spigot_dir_for_playground(playground_name) + "/spigot.jar"
 
