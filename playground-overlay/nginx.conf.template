@@ -10,6 +10,15 @@ location /${playground_name}/ {
 
   alias /home/ubuntu/playgrounds/${playground_name}/webroot/;
 
+  location /${playground_name}/admin/ {
+    rewrite /${playground_name}/admin(.*) /$$1  break; # dollar-dollar for python templating pass-through
+    proxy_pass http://127.0.0.1:${grpc_craft_admin_web_port};
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $$http_upgrade; # dollar-dollar escapes to dollar w/ python string.Template
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Origin "";
+  }
+
   location /${playground_name}/python/ {
     proxy_pass http://127.0.0.1:${ipython_notebook_server_http_port};
     proxy_http_version 1.1;

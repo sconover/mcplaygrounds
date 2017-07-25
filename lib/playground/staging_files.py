@@ -49,6 +49,7 @@ def evaluate_and_replace_templates(root_dir, template_vars):
         for f in fnames:
             path = os.path.join(dirpath, f)
             if (path.endswith(".template")):
+                print("evaluate template: {}".format(path))
                 new_file_content = Template(open(path).read()).substitute(template_vars)
                 path_without_template_extension = os.path.splitext(path)[0]
                 f = open(path_without_template_extension, 'w')

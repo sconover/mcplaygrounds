@@ -1,0 +1,4 @@
+env_name=${playground_name}
+minecraft_player_name=${initial_minecraft_player_name_for_oogway}
+port=${ipython_notebook_server_http_port}
+grpc_craft_port=${grpc_craft_port}
