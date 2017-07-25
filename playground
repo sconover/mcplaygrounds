@@ -196,7 +196,7 @@ add_simple_subparser(update_raspberry_plugin)
 
 def deploy_grpc_craft_plugin(args):
     dest = grpc_craft_plugin_jar_for_playground(args.playground_name)
-    ssh_exec("rm -f {} && cp `{}` {}".format(dest, const.GRPC_CRAFT_PLUGIN_JAR_LOCATOR_COMMAND, dest))
+    copy_spigot_server_files(args.playground_name)
 add_simple_subparser(deploy_grpc_craft_plugin)
 
 def deploy_grpc_craft_plugin_and_restart_spigot(args):
