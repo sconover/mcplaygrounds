@@ -4,8 +4,13 @@ SPIGOT_LATEST_JAR_LOCATOR_COMMAND = "ls -r ~/spigot-buildtools/spigot-*.jar | he
 GRPC_CRAFT_PLUGIN_JAR_LOCATOR_COMMAND = "ls -r ~/grpc-craft/plugin/target/plugin-*.jar | head -n 1 | xargs readlink -f"
 GRPC_CRAFT_BIN_DIR_LOCATOR_COMMAND = "echo ~/grpc-craft/system-exec/bin | xargs readlink -f"
 GRPC_CRAFT_PYTHON_CLIENT_DIR_LOCATOR_COMMAND = "echo ~/grpc-craft/python/oogway_client | xargs readlink -f"
+GRPC_CRAFT_IPYTHON_SEED_LOCATOR_COMMAND = "echo ~/grpc-craft/ipython/seed | xargs readlink -f"
 GRPC_CRAFT_PYTHON_CLIENT_REQUIREMENTS_TXT_LOCATOR_COMMAND = "echo 'grpc-craft/python/oogway_client/requirements.txt'"
 PYTHON_VIRTUALENV=".python-virtualenv"
+IPYTHON_SEED_DIR="ipython-bootstrap/seed"
+IPYTHON_USER_LIBS_DIR="ipython-bootstrap/lib"
+IPYTHON_INSTANCE_ROOT_DIR="ipython-instances"
+IPYTHON_BIN_PATH_DIR="bin/ipython"
 
 MINECRAFT_SERVER_VARIANT_SPIGOT_GRPC="spigot_grpc"
 MINECRAFT_SERVER_VARIANT_SPONGE_MCPI="sponge_mcpi"
