@@ -120,7 +120,8 @@ def pull_grpc_craft(branch):
         "cd $HOME/grpc-craft",
         "git pull --all",
         "git checkout {}".format(branch),
-        "git submodule update --init --recursive"
+        "git submodule update --init --recursive",
+        "git show | head -n 5"
     ])
 
 def pull(args):
@@ -231,16 +232,14 @@ add_simple_subparser(build_spigot_minecraft_buildtools_maven)
 def build_grpc_craft(args):
     ssh_exec_all([
         "cd grpc-craft",
-        "time mvn clean package"
+        "time mvn clean package",
+        "git show | head -n 5"
     ])
 add_simple_subparser(build_grpc_craft)
 
 def pull_and_rebuild_grpc_craft(args):
     pull_grpc_craft(args.branch)
-    ssh_exec_all([
-        "cd grpc-craft",
-        "time mvn clean package"
-    ])
+    build_grpc_craft(args)
 grpc_parser = subparsers.add_parser("pull-and-rebuild-grpc-craft")
 grpc_parser.add_argument('branch')
 grpc_parser.set_defaults(func=pull_and_rebuild_grpc_craft)

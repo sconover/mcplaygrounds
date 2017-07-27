@@ -238,7 +238,9 @@ add_simple_subparser(test_rsync_destructive)
 
 def write_crontab(args):
     crontab_lines = [
-        "55 10 * * * sudo shutdown -h now"
+        # 7/2017 - spigot fits on a t2.small now, so i'm just going to let it run 
+        # indefinitely.
+        # "55 10 * * * sudo shutdown -h now"
     ] # if instance is still running at 2:55am PT, shut it down.
     crontab_lines.append("@reboot /usr/bin/tmux new-session -s dstat -d '/usr/bin/dstat --time --load --mem --net  --io --swap --page --sys'")
 

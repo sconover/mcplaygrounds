@@ -4,6 +4,10 @@ location = /${playground_name} {
   rewrite ^ /${playground_name}/ permanent;
 }
 
+location /${playground_name}-programs/ {
+  include /home/ubuntu/playgrounds/${playground_name}/ipython-instances/*/nginx.conf;
+}
+
 location /${playground_name}/ {
   auth_basic "Login Required";
   auth_basic_user_file /home/ubuntu/playgrounds/${playground_name}/htpasswd_file;

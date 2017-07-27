@@ -1,0 +1,7 @@
+ipython_seed_dir=${ipython_seed_dir}
+ipython_user_libs_dir=${ipython_user_libs_dir}
+ipython_instances_root_dir=${ipython_instances_root_dir}
+ipython_bin_path=${ipython_bin_path}
+ipython_url_path_prefix=${ipython_url_path_prefix}
+ipython_process_prefix=${playground_name}-
+grpc_craft_port=${grpc_craft_port}
