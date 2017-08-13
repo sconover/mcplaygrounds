@@ -17,6 +17,8 @@ class PlaygroundConfig(BaseSettingsClass):
         self.grpc_craft_port = None
         self.grpc_craft_admin_web_port = None
         self.sentry_io_client_key_aka_dsn = None
+        self.circle_ci_api_token = None
+        self.ipython_notebook_server_http_port = None
         self.ipython_notebook_server_http_port = None
         self.web_password = None
         self.initial_minecraft_player_name_for_oogway = None

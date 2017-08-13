@@ -1,3 +1,7 @@
+ echo "https://57-93571295-gh.circle-artifacts.com/0/home/circleci/artifacts/spigot.jar?circle-token=e5a70f5c4cdc38711067c00ec66bb118e4f1bacb" | xargs curl -o foo.jar
+
+ ================
+
 rebuild grpc-craft plugin, deploy, restart bar spigot, for a given branch:
 
 ./server pull-and-rebuild-grpc-craft steve.oogway.big_rename_of_java_oto_oogway_backend && ./playground bar update-grpc-craft

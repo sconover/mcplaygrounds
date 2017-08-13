@@ -91,10 +91,10 @@ class ServerConfig(BaseSettingsClass):
         self.mcgamedata_git_branch = "master"
         self.oogway_git_repo = "https://github.com/sconover/oogway"
         self.oogway_git_branch = "master"
-        self.spigot_buildtools_git_repo = "git@github.com:copypastel/spigot-buildtools.git"
+        self.spigot_buildtools_git_repo = "git@copypastel.github.com:copypastel/spigot-buildtools.git"
         self.spigot_buildtools_git_branch = "master"
-        self.grpc_craft_git_repo = "git@github.com:copypastel/grpc-craft.git"
-        self.grpc_craft_git_branch = "steve.oogway.big_rename_of_java_oogway_to_oogway_backend"
+        self.grpc_craft_git_repo = "git@copypastel.github.com:copypastel/grpc-craft.git"
+        self.grpc_craft_git_branch = "master"
         self.server_label = None
 
         # these MUST be specified in the separate server config file
@@ -151,8 +151,8 @@ def rsync_exec(local_dir, remote_dir, more_flags=""):
     ssh_parts = ssh_parts_without_user_at_host()
     dash_e = "'" + " ".join(ssh_parts) + "'"
     rsync_parts = [
-        "/usr/bin/rsync", "-avz", more_flags, 
-        "-e " + dash_e, 
+        "/usr/bin/rsync", "-avz", more_flags,
+        "-e " + dash_e,
         local_dir, remote_dir_with_user_at_host
     ]
     cmd = " ".join(rsync_parts)

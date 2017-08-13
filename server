@@ -32,11 +32,11 @@ def bootstrap(args):
     config = load_current_server_config()
 
     # allow www-data user to execute bin scripts as the ubuntu user, nopasswd
-    ssh_exec_all([
-        "sudo sh -c \"echo 'www-data ALL = (ubuntu) NOPASSWD: /home/ubuntu/playgrounds/*/bin/*' > /etc/sudoers.d/www-data-playground-bin\"",
-        "sudo sh -c \"echo 'www-data ALL = (ubuntu) NOPASSWD: /home/ubuntu/playgrounds/*/bin/*/*' >> /etc/sudoers.d/www-data-playground-bin\"",
-        "sudo sh -c \"echo 'www-data ALL = (ubuntu) NOPASSWD: /home/ubuntu/playgrounds/*/bin/*/*/*' >> /etc/sudoers.d/www-data-playground-bin\""
-    ])
+    # ssh_exec_all([
+    #     "sudo sh -c \"echo 'www-data ALL = (ubuntu) NOPASSWD: /home/ubuntu/playgrounds/*/bin/*' > /etc/sudoers.d/www-data-playground-bin\"",
+    #     "sudo sh -c \"echo 'www-data ALL = (ubuntu) NOPASSWD: /home/ubuntu/playgrounds/*/bin/*/*' >> /etc/sudoers.d/www-data-playground-bin\"",
+    #     "sudo sh -c \"echo 'www-data ALL = (ubuntu) NOPASSWD: /home/ubuntu/playgrounds/*/bin/*/*/*' >> /etc/sudoers.d/www-data-playground-bin\""
+    # ])
 
     # ugh bitrot, commenting this out
     # ssh_exec_all([
@@ -44,7 +44,7 @@ def bootstrap(args):
     #     # "sudo add-apt-repository {} -y".format(config.modern_nginx_apt_repo), # need a modern nginx
     #     "sudo add-apt-repository {} -y".format(config.modern_openjdk_apt_repo), # need java 8
     #     "sudo apt-get update",
-    #     "sudo apt-get install apache2-utils build-essential dstat git gradle htop maven nginx nginx-extras nodejs-legacy npm openjdk-8-jdk python-pip python-dev sysstat tmux -y",
+    #     "sudo apt-get install apache2-utils build-essential dstat git gradle htop jq maven nginx nginx-extras nodejs-legacy npm openjdk-8-jdk python-pip python-dev sysstat tmux -y",
     #     "sudo update-java-alternatives --set java-1.8.0-openjdk-amd64",
     #     "sudo pip install virtualenv virtualenvwrapper"
     # ])
@@ -70,12 +70,12 @@ def bootstrap(args):
     # Press enter to keep the current choice[*], or type selection number: 2
     # update-alternatives: using /usr/lib/jvm/java-8-openjdk-amd64/bin/javac to provide /usr/bin/javac (javac) in manual mode
 
-    ssh_exec("file RaspberryJuiceSpongePlugin/.git || git clone {} --recursive".format(config.raspberry_juice_sponge_plugin_git_repo))
-    ssh_exec("file ipython/.git || git clone {} --recursive".format(config.ipython_git_repo))
-    ssh_exec("file mcpi/.git || git clone {}".format(config.mcpi_git_repo))
-    ssh_exec("file mcgamedata/.git || git clone {}".format(config.mcgamedata_git_repo))
-    ssh_exec("file oogway/.git || git clone {}".format(config.oogway_git_repo))
-    ssh_exec("file spigot-buildtools/.git || git clone {}".format(config.spigot_buildtools_git_repo))
+    # ssh_exec("file RaspberryJuiceSpongePlugin/.git || git clone {} --recursive".format(config.raspberry_juice_sponge_plugin_git_repo))
+    # ssh_exec("file ipython/.git || git clone {} --recursive".format(config.ipython_git_repo))
+    # ssh_exec("file mcpi/.git || git clone {}".format(config.mcpi_git_repo))
+    # ssh_exec("file mcgamedata/.git || git clone {}".format(config.mcgamedata_git_repo))
+    # ssh_exec("file oogway/.git || git clone {}".format(config.oogway_git_repo))
+    # ssh_exec("file spigot-buildtools/.git || git clone {}".format(config.spigot_buildtools_git_repo))
     ssh_exec("file grpc-craft/.git || git clone {}".format(config.grpc_craft_git_repo))
 
     # set up nginx, notably to be able to point to playground nginx.conf's
@@ -261,14 +261,12 @@ add_simple_subparser(reboot)
 def ssh(args):
     parts = ssh_parts()
     ssh_bin = parts.pop(0)
-    parts.insert(0, "") # dunno why
     os.execv(ssh_bin, parts)
 add_simple_subparser(ssh)
 
 def scp(args):
     parts = scp_parts(args.local_path, args.remote_path)
     scp_bin = parts.pop(0)
-    parts.insert(0, "") # dunno why
     os.execv(scp_bin, parts)
 scp_parser = subparsers.add_parser("scp", help='{} scp')
 scp_parser.add_argument('local_path', help='copy from local file or dir')
