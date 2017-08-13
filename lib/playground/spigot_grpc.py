@@ -36,16 +36,28 @@ def ipython_url_path_prefix_for_playground(playground_name):
 def get_ipython_bin_path():
     return "/home/ubuntu/{}/{}".format(const.PYTHON_VIRTUALENV, const.IPYTHON_BIN_PATH_DIR)
 
+def download_latest_artifact_from_circle_ci(playground_config, ci_project_name, branch_name, artifact_path_ends_with, dest):
+    curl_command = "/usr/bin/curl 'https://circleci.com/api/v1.1/project/github/copypastel/{}/latest/artifacts".format(ci_project_name) + \
+        "?circle-token={}&branch={}&filter=successful'".format(playground_config.circle_ci_api_token, branch_name) + \
+        " | python -c 'import sys, json; artifacts=json.load(sys.stdin); entry=next((a for a in artifacts if a[\"pretty_path\"].endswith(\"{}\")), None); print(entry[\"url\"])'".format(artifact_path_ends_with) + \
+        " | xargs -I REPLACE curl -o {} \"REPLACE?circle-token={}\"" \
+            .format(dest, playground_config.circle_ci_api_token)
+    ssh_exec(curl_command)
+
 def download_latest_successfully_built_spigot_jar_from_circle_ci(playground_config):
     d = spigot_dir_for_playground(playground_config.playground_name)
-    curl_command = "/usr/bin/curl 'https://circleci.com/api/v1.1/project/github/copypastel/spigot-buildtools/latest/artifacts" + \
-        "?circle-token={}&branch=master&filter=successful'".format(playground_config.circle_ci_api_token) + \
-        " | python -c 'import sys, json; artifacts=json.load(sys.stdin); entry=next((a for a in artifacts if a[\"pretty_path\"].endswith(\"spigot.jar\")), None); print(entry[\"url\"])'" + \
-        " | xargs -I REPLACE curl -o {} \"REPLACE?circle-token={}\"" \
-            .format(spigot_dir_for_playground(playground_config.playground_name) + "/spigot.jar", playground_config.circle_ci_api_token)
     ssh_exec("cp {} {}".format(spigot_dir_for_playground(playground_config.playground_name) + "/spigot.jar",
         spigot_dir_for_playground(playground_config.playground_name) + "/spigot.jar.old"))
-    ssh_exec(curl_command)
+    download_latest_artifact_from_circle_ci(playground_config, "spigot-buildtools", "master", "spigot.jar",
+        spigot_dir_for_playground(playground_config.playground_name) + "/spigot.jar")
+
+def download_latest_successfully_built_grpccraft_jar_from_circle_ci(playground_config, branch_name):
+    e = grpc_craft_executable_root_dir_for_playground(playground_config.playground_name)
+    plugin_dest = grpc_craft_plugin_jar_for_playground(playground_config.playground_name)
+    download_latest_artifact_from_circle_ci(playground_config, "grpc-craft", branch_name, "grpc-craft-plugin.jar", plugin_dest)
+    download_latest_artifact_from_circle_ci(playground_config, "grpc-craft", branch_name, "grpc-craft-bin.tar.gz", "/tmp/grpc-craft-bin.tar.gz")
+    bin_tmp = "/tmp/grpc-craft-bin"
+    ssh_exec("rm -rf {} && mkdir -p {} && cd {} && tar zxvf /tmp/grpc-craft-bin.tar.gz && cp {}/* {}/".format(bin_tmp, bin_tmp, bin_tmp, bin_tmp, e))
 
 def copy_spigot_server_files(playground_config):
     j = spigot_jar_for_playground(playground_config.playground_name)

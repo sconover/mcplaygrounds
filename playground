@@ -206,34 +206,13 @@ deploy_latest_spigot_parser.set_defaults(func=deploy_latest_spigot)
 
 def deploy_grpc_craft_plugin(args):
     playground_config = load_playground_config(args.playground_name, args.playground_config_file)
-    dest = grpc_craft_plugin_jar_for_playground(args.playground_name)
-    copy_spigot_server_files(playground_config)
+    stop_minecraft(args)
+    download_latest_successfully_built_grpccraft_jar_from_circle_ci(playground_config, args.branch_name)
+    start_minecraft(args)
 deploy_grpc_craft_plugin_parser = subparsers.add_parser("deploy-grpc-craft-plugin", help='{} foo')
 deploy_grpc_craft_plugin_parser.add_argument('playground_config_file', help='json config for playgrounds')
+deploy_grpc_craft_plugin_parser.add_argument('branch_name', help='the grpc-craft branch of the artifact')
 deploy_grpc_craft_plugin_parser.set_defaults(func=deploy_grpc_craft_plugin)
-
-def deploy_grpc_craft_plugin_and_restart_spigot(args):
-    stop_minecraft(args)
-    deploy_grpc_craft_plugin(args)
-    start_minecraft(args)
-add_simple_subparser(deploy_grpc_craft_plugin_and_restart_spigot)
-
-def deploy_grpc_craft_python_client(args):
-    dest = grpc_craft_python_client_lib_dir(args.playground_name)
-    ssh_exec("rm -rf {} && cp -R `{}` {}".format(dest, const.GRPC_CRAFT_PYTHON_CLIENT_DIR_LOCATOR_COMMAND, dest))
-    # ssh_exec("rm -f {} && cp -R `{}` {}".format(dest, const.GRPC_CRAFT_PYTHON_CLIENT_DIR_LOCATOR_COMMAND, dest))
-add_simple_subparser(deploy_grpc_craft_python_client)
-
-def deploy_grpc_craft_python_client_and_restart_ipython(args):
-    stop_ipython(args)
-    deploy_grpc_craft_python_client(args)
-    start_ipython(args)
-add_simple_subparser(deploy_grpc_craft_python_client_and_restart_ipython)
-
-def update_grpc_craft(args):
-    deploy_grpc_craft_python_client_and_restart_ipython(args)
-    deploy_grpc_craft_plugin_and_restart_spigot(args)
-add_simple_subparser(update_grpc_craft)
 
 def destroy(args):
     exists(args)
