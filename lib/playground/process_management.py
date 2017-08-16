@@ -68,7 +68,7 @@ def tmux_playground_start_command_no_cd(playground_name, tmux_session_suffix, co
                 command,
                 abs_pdir(playground_name) + "/tmux_console_logs/" + session_name + ".log")
 
-def relative_tmux_start_script_path(playground_name, script_name):
+def relative_tmux_script_path(playground_name, script_name):
     return "/bin/tmux/{}".format(script_name)
 
 def abs_tmux_start_script_path(playground_name, script_name):
@@ -96,7 +96,12 @@ def write_tmux_session_restart_script_to_staging_dir(playground_name, tmux_sessi
         tmux_playground_start_command_no_cd(playground_name, tmux_session_suffix, start_command),
         ""
     ])
-    write_playground_bash_script_to_staging_dir(lines, relative_tmux_start_script_path(playground_name, script_name))
+    write_playground_bash_script_to_staging_dir(lines, relative_tmux_script_path(playground_name, script_name))
+
+def write_tmux_session_kill_script_to_staging_dir(playground_name, tmux_session_suffix, script_name):
+    session_name = playground_name + "-" + tmux_session_suffix
+    lines = [tmux_kill_bash_fragment(session_name)]
+    write_playground_bash_script_to_staging_dir(lines, relative_tmux_script_path(playground_name, script_name))
 
 def stage_start_bin(playground_config):
     if playground_config.minecraft_server_port:
@@ -106,7 +111,7 @@ def stage_start_bin(playground_config):
                 "Every playground that runs a minecraft server " + \
                 "MUST declare a valid variant. Actual: {}".format(playground_config.minecraft_server_variant))
 
-        # minecraft start script and tmux restart script are intentionally named the same, 
+        # minecraft start script and tmux restart script are intentionally named the same,
         # so that one replaces the other (depending on selected variant)
 
         variant_message = "echo 'STARTING VARIANT: {}'".format(playground_config.minecraft_server_variant)
@@ -128,7 +133,7 @@ def stage_start_bin(playground_config):
         if not playground_config.minecraft_startup_commands or not len(playground_config.minecraft_startup_commands) > 0:
             raise Exception( \
                 "Every playground that runs a minecraft server " + \
-                "MUST have at least one entry in minecraft_startup_commands")            
+                "MUST have at least one entry in minecraft_startup_commands")
 
         minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_config.playground_name, c), playground_config.minecraft_startup_commands))
 
@@ -145,6 +150,8 @@ def stage_start_bin(playground_config):
             "mc-init",
             "{}/bin/start/run_minecraft_startup_console_commands".format(abs_pdir(playground_config.playground_name)),
             "tmux_run_minecraft_startup_console_commands")
+
+        write_tmux_session_kill_script_to_staging_dir(playground_config.playground_name, "mc", "tmux_kill_minecraft_server")
 
         # spawn off a tmux restart of minecraft console command runner, before starting the minecraft server.
         # so, the command script poll the minecraft port, and once it successfully connects, it then

@@ -1,0 +1,18 @@
+#!/bin/bash -ex
+
+project_name=$1
+release_id=$2
+
+this_dir=$(dirname $0)
+playground_root_dir_abs=$(readlink -f $this_dir/../../)
+release_dir=$playground_root_dir_abs/deployment/artifacts/$release_id
+
+if [ ! -d $release_dir ]; then
+  echo "expected directory to exist: $release_dir"
+  exit 1
+fi
+
+mkdir -p $playground_root_dir_abs/deployment/current
+symlink_target=$playground_root_dir_abs/deployment/current/$project_name
+echo "pointing symlink $symlink_target at directory $release_dir"
+ln -nsf $release_dir $symlink_target

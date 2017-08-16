@@ -1,0 +1,10 @@
+#!/bin/bash -ex
+
+project_name=$1
+release_id=$2
+
+this_dir=$(dirname $0)
+
+$this_dir/../tmux/tmux_kill_minecraft_server
+$this_dir/flip_current_symlink $project_name $release_id
+$this_dir/../tmux/tmux_restart_minecraft_server

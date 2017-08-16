@@ -1,3 +1,105 @@
+deployment from circleci
+
+      - deploy:
+          name: Maybe Deploy
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              <your-deploy-commands>
+            fi
+      ... if branch matches deployable__
+      or rather.
+        put a script in the roots of grpc-craft and buildtools projects,
+          that create a deployment tag
+          tag contents = json document
+          ...specify server
+          ...use the sha and timestamp of this commit as the sha/timestamp in the release id?
+          creates a tag with a certain naming convention
+      then, a tag based build will kick off
+        https://circleci.com/docs/1.0/configuration/#tags
+      auto-open browser to the circleci project in question
+
+  in build...
+    parse json
+    try basic auth / GET of host/_status
+      make /_status show current release_id's
+        (deploy should record last deploy and current release id's, e.g. date > status and ls -l deployment/current >> _status)
+
+  must be relatively secure
+  output visible in circleci
+
+  release id format: rTIMESTAMP--project-name--gitsha-commitcountfromstart
+    include a json file in the root called "build-info.json" with this information
+    timestamp is circle ci official start of build, if available
+
+  - branch per destination
+  - env var namespacing scheme for basic auth creds, set these in circleci
+  - circle.yml needs to have the deploy enabled
+  - on push to deployable__a.giantpurplekitty.com__bar
+    - determine release - e.g. rTIMESTAMP-grpc-plugin-GRPCCRAFTREPOGIHSHA (regex something like: ^Aa-zA-Z0-9-_^Z)
+    - make a rTIMESTAMP-grpc-plugin-GRPCCRAFTREPOGIHSHA.tar.gz with all deployment contents
+    - splice dest host, playground name from branch name
+    - get basic auth password from circleci env var (must exist)
+    - curl POST to a.gpk.com/bar/deploy-with-minecraft-stop-start -u bar:PASS, body is json w/ build number, api token
+      - validate and transform POST params (export env vars?)
+        - python script
+        - expect json
+          - max body length
+          - echo '{"artifacts_url":"/project/github/foo/bar/17/artifacts", "api_key":"abc123"}' | python -c 'import sys, json; doc=json.load(sys.stdin); print(doc)'
+      - backing code must be COMPLETELY independent of app code
+      - api token is scoped to build artifacts
+      - api token is provided via env var setting
+      - script on host calls back to GET: /project/:vcs-type/:username/:project/:build_num/artifacts
+        - then, download artifacts, stop minecraft, move into place, start minecraft
+  - download_deployable_artifact circleci_api_token circleci_user circleci_project_name build_number release project_name
+      create if not exists...playground/bar/deployment/artifacts
+      just bash
+      expect to find release.tar.gz (fail otherwise)
+      mkdir playground/bar/deployment/artifacts/release (check for existence, fail if exists)
+      subshell: cd to dir, curl pipe untargz
+  - flip_current_symlink playground_name project_name release
+      just bash
+  - deploy is...
+    - download and pre-position artifact (fail deploy if this fails) (minimizes downtime)
+    - bash script: deploy_with_minecraft_stop_start playground_name project_name release_id
+      - stop mc
+        - chat into world about showdown (inject into mc console)
+        - show tmux output
+      - flip symlink
+      - start mc
+        - show tmux output
+        - tail console log until stopping point
+          e.g. timeout 180 grep -q 'PATTERN' <(tail -f file.log)
+  - POST done.
+
+   playground/bar/deployment/artifacts
+     rTIMESTAMP-grpc-craft-plugin-GRPCCRAFTREPOGIHSHA
+     ...
+   playground/bar/deployment/current/grpc-craft-plugin
+   playground/bar/deployment/current/spigot
+
+   then...symlink to these dirs are set up on mcplaygrounds overlay (one time)
+
+   bootstrapping...
+     download and flip symlink (creates current if not exists)
+     start mc - symlinks to current if not exists
+       mc start fails if current symlinks not found
+
+   then we almost totally cut mcplaygrounds out of this...except for script deployment
+
+(to Matt)
+My plan is to make it so pushing to a special branch causes a deploy to happen
+So, we leverage all of circle’s console output capability etc.
+I think I will have the circle deploy POST to an nginx-running-python-script endpoint on the gpk server
+And that script will just call back to get the artifact of the build in question, and then deploy it,
+and then print the Minecraft console log up to some point
+All of this is output that gets returned and displayed in circleci, because it’s just a simple curl POST
+And that would kill a major aspect of my script stuff. What I’m going to try to do overall is cut this thing
+down until it’s effectively an fcm…just placing various script and config files on the host, and doing some basic
+package installs. A template for a future docker container, maybe.
+
+===============
+
+
  echo "https://57-93571295-gh.circle-artifacts.com/0/home/circleci/artifacts/spigot.jar?circle-token=e5a70f5c4cdc38711067c00ec66bb118e4f1bacb" | xargs curl -o foo.jar
 
  ================

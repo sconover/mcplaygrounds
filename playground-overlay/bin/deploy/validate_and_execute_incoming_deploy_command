@@ -1,0 +1,72 @@
+#!/usr/bin/python
+
+import sys, json, re, os
+
+# ex: {"artifacts_url":"/project/github/foo/bar/17/artifacts", "release_id":"r2017--grpc-craft-plugin--abc123def456", "project_name":"grpc-craft-plugin", "circle_ci_api_key":"abc123"}
+# test:  echo '{"artifacts_url":"/project/github/foo/bar/17/artifacts", "release_id":"r2017--grpc-craft-plugin--abc123def456", "project_name":"grpc-craft-plugin", "circle_ci_api_key":"abc123"}' | TEST="true" ./validate_and_execute_incoming_deploy_command
+
+json_str=sys.stdin.read()
+
+# Validation is defend against "friendly" mistakes, and (possibly) unsophisticated attackers.
+#
+# Additionally, the assumption is that this may only be invoked subsequent to passing a basic auth challenge.
+
+# intentionally vague
+def die():
+  raise Exception("deployment error")
+
+if len(json_str)<50 or len(json_str)>1000:
+  die()
+
+doc=json.loads(json_str)
+
+if sorted(doc.keys())!=["artifacts_url", "circle_ci_api_key", "project_name", "release_id"]:
+  die()
+
+def get_value(key):
+  if key not in doc:
+    die()
+  value = doc[key]
+  if not isinstance(value, basestring):
+    die()
+  if len(value) == 0:
+    die()
+  return value
+
+def validate_url_path_arg(key):
+  path = get_value(key)
+  if re.match("^[A-Za-z0-9_\-\/\.]+$", path) is None:
+    die()
+  return path
+
+def validate_identifier_arg(key):
+  identifier = get_value(key)
+  if re.match("^[A-Za-z0-9\-]+$", identifier) is None:
+    die()
+  return identifier
+
+def validate_project_name(key):
+  name = validate_identifier_arg(key)
+  if name not in ["grpc-craft-plugin", "spigot"]:
+    die()
+  return name
+
+artifacts_url_path = validate_url_path_arg("artifacts_url")
+circle_ci_api_key = validate_identifier_arg("circle_ci_api_key")
+project_name = validate_project_name("project_name")
+release_id = validate_identifier_arg("release_id")
+
+print("This is a valid deploy command. Values:")
+print("artifacts_url=" + artifacts_url_path)
+print("circle_ci_api_key=" + circle_ci_api_key)
+print("project_name=" + project_name)
+print("release_id=" + release_id)
+
+if "TEST" in os.environ:
+  exit(0)
+
+print("Execute deploy:")
+this_dir = os.path.dirname(os.path.realpath(__file__))
+execute_deploy_path = os.path.join(this_dir, "execute_deploy")
+if os.system(execute_deploy_path + " " + circle_ci_api_key + " " + artifacts_url_path + " " + project_name + " " + release_id) != 0:
+  die()

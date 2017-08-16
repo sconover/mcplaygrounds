@@ -1,0 +1,15 @@
+#!/bin/bash -ex
+
+circle_ci_api_token=$1
+artifacts_url_path=$2
+project_name=$3
+release_id=$4
+
+
+this_dir=$(dirname $0)
+
+echo "[Deploy Step 1] Download and stage deployable artifact."
+$this_dir/download_deployable_artifact $circle_ci_api_token $artifacts_url_path $release_id
+
+echo "[Deploy Step 2] Stop the Spigot/Minecraft server, make the artifact directory 'current', start the Spigot/Minecraft server."
+$this_dir/deploy_with_minecraft_stop_start $project_name $release_id
