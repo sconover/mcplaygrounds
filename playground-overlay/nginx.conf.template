@@ -65,6 +65,13 @@ location /${playground_name}/ {
     ';
   }
 
+  location /bar/deploy-minecraft-artifact {
+    limit_except POST {
+      deny all;
+    }
+    content_by_lua_file /home/ubuntu/playgrounds/bar/nginx_support/handle_deploy_minecraft_http_post.lua;
+  }
+
   # BIN_PATHS_GO_HERE
 
 }

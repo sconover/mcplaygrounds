@@ -1,0 +1,35 @@
+local process_in = os.tmpname()
+local process_out = os.tmpname()
+
+ngx.req.read_body()                           -- read the request body into memory
+
+-- write process input to tmpfile
+local input_writer = io.open(process_in, "w")
+input_writer:write(ngx.req.get_body_data())
+input_writer:close()
+
+local cmd = "sudo -u ubuntu /home/ubuntu/playgrounds/${playground_name}/bin/deploy/validate_and_execute_incoming_deploy_command"
+
+ngx.log(ngx.STDERR, "running command: " .. cmd)
+ngx.say("running command: " .. cmd)
+
+local return_code = os.execute(cmd .. " < " .. process_in .. " > " .. process_out .. " 2>&1")
+
+ngx.say("STARTING DEPLOY, REQUEST BODY: " .. ngx.req.get_body_data())
+ngx.flush()
+
+-- read process output from tmpfile
+local output_reader = io.open(process_out, "r")
+local output = output_reader:read("*all")
+output_reader:flush()
+output_reader:close()
+
+ngx.say(output)                             -- send back output in response body
+
+if return_code == 0 then
+  ngx.say("DEPLOY SUCCESS")
+  ngx.exit(200)
+else
+  ngx.say("DEPLOY FAILURE")
+  ngx.exit(500)
+end

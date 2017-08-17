@@ -125,6 +125,22 @@ def stage_start_bin(playground_config):
 
         if playground_config.minecraft_server_variant == const.MINECRAFT_SERVER_VARIANT_SPIGOT_GRPC:
             write_playground_bash_script_to_staging_dir([
+                "pdir={}".format(abs_pdir(playground_config.playground_name)),
+                "",
+                "# create symlinks to various directories under deployment/current - these files",
+                "# are changed via application deployment",
+                "mkdir -p $pdir/spigot-server/plugins",
+                "ln -nsf $pdir/deployment/current/grpc-craft-plugin/grpc-craft-plugin.jar $pdir/spigot-server/plugins/grpc-craft-plugin.jar",
+                "rm -rf $pdir/spigot-server/bin",
+                "ln -nsf $pdir/deployment/current/grpc-craft-plugin/system_exec_bin $pdir/spigot-server/bin",
+                "",
+                "rm -rf $pdir/ipython-bootstrap",
+                "mkdir -p $pdir/ipython-bootstrap/lib",
+                "ln -nsf $pdir/deployment/current/grpc-craft-plugin/ipython_seed $pdir/ipython-bootstrap/seed",
+                "ln -nsf $pdir/deployment/current/grpc-craft-plugin/python_oogway_client $pdir/ipython-bootstrap/lib/oogway_client",
+                "",
+                "cd $pdir/spigot-server",
+                "",
                 "cd {}".format(spigot_dir_for_playground(playground_config.playground_name)),
                 variant_message,
                 "exec " + spigot_server_startup_java_command(playground_config)

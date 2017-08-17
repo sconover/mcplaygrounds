@@ -22,7 +22,7 @@ this_dir=$(dirname $0)
 playground_root_dir=$this_dir/../../
 release_dir=$playground_root_dir/deployment/artifacts/$release_id
 
-if [ -d $release_dir ]; then
+if [ -d "$release_dir/" ]; then
   echo "release dir $release_dir already exists, will not download artifact."
   exit 1
 fi
