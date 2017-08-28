@@ -133,11 +133,13 @@ def stage_start_bin(playground_config):
                 "ln -nsf $pdir/deployment/current/grpc-craft-plugin/grpc-craft-plugin.jar $pdir/spigot-server/plugins/grpc-craft-plugin.jar",
                 "rm -rf $pdir/spigot-server/bin",
                 "ln -nsf $pdir/deployment/current/grpc-craft-plugin/system_exec_bin $pdir/spigot-server/bin",
+                "ln -sf $pdir/spigot-server/ipython-automation.properties $pdir/spigot-server/bin/ipython-automation.properties", # ugh, probably need some config/injection reform one of these days
                 "",
                 "rm -rf $pdir/ipython-bootstrap",
                 "mkdir -p $pdir/ipython-bootstrap/lib",
                 "ln -nsf $pdir/deployment/current/grpc-craft-plugin/ipython_seed $pdir/ipython-bootstrap/seed",
                 "ln -nsf $pdir/deployment/current/grpc-craft-plugin/python_oogway_client $pdir/ipython-bootstrap/lib/oogway_client",
+                "ln -nsf $pdir/deployment/current/grpc-craft-plugin/python_jupyter_contents_manager_cloud_client $pdir/ipython-bootstrap/jupyter_contents_manager_cloud_client",
                 "",
                 "cd $pdir/spigot-server",
                 "",
