@@ -80,9 +80,12 @@ def copy_spigot_server_files(playground_config):
 def spigot_server_startup_java_command(playground_config):
 	# There MUST be agreement between the grpc system property name and
 	# properties file contents in this project, and what the application expects
-	return "java -Xmx8g -Xms256m " + \
+
+    # -DIReallyKnowWhatIAmDoingISwear see https://www.spigotmc.org/threads/disable-30-seconds-delay-when-build-is-outdated.199641/
+	return "java -Xmx2g -Xms256m " + \
 		"-Dgrpccraft.properties.path={} ".format(grpc_craft_properties_abs_path(playground_config.playground_name)) + \
 		"-Djava.net.preferIPv4Stack=true " + \
+        "-DIReallyKnowWhatIAmDoingISwear " + \
 		"-XX:-UsePerfData -XX:+UseConcMarkSweepGC " + \
 		"-XX:PermSize=256m -XX:MaxPermSize=256m " + \
 		"-XX:+PrintAdaptiveSizePolicy -verbose:gc -XX:+PrintGCDetails " + \

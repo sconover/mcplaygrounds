@@ -120,12 +120,14 @@ def stage_start_bin(playground_config):
             write_playground_bash_script_to_staging_dir([
                 "cd {}/minecraft-server".format(abs_pdir(playground_config.playground_name)),
                 variant_message,
-                "exec java -Xmx8g -Xms1g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -XX:+PrintAdaptiveSizePolicy -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:minecraft-jvm-gc.log -jar sponge-minecraft-server.jar run"
+                "exec java -Xmx2g -Xms1g -Djava.net.preferIPv4Stack=true -XX:-UsePerfData -XX:+UseConcMarkSweepGC -XX:PermSize=256m -XX:MaxPermSize=256m -XX:+PrintAdaptiveSizePolicy -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:minecraft-jvm-gc.log -jar sponge-minecraft-server.jar run"
             ], "/bin/start/start_minecraft_server")
 
         if playground_config.minecraft_server_variant == const.MINECRAFT_SERVER_VARIANT_SPIGOT_GRPC:
             write_playground_bash_script_to_staging_dir([
                 "pdir={}".format(abs_pdir(playground_config.playground_name)),
+                "",
+                "lsof -n -i4TCP:{} | grep LISTEN | awk '{{print $2}}' | xargs -L1 -r kill -9".format(playground_config.minecraft_server_port), # forcibly clean up possible leftover slop
                 "",
                 "# create symlinks to various directories under deployment/current - these files",
                 "# are changed via application deployment",
@@ -134,6 +136,9 @@ def stage_start_bin(playground_config):
                 "rm -rf $pdir/spigot-server/bin",
                 "ln -nsf $pdir/deployment/current/grpc-craft-plugin/system_exec_bin $pdir/spigot-server/bin",
                 "ln -sf $pdir/spigot-server/ipython-automation.properties $pdir/spigot-server/bin/ipython-automation.properties", # ugh, probably need some config/injection reform one of these days
+                "ls -la $pdir/spigot-server",
+                "ls -la $pdir/spigot-server/bin",
+                "ls -la $pdir/spigot-server/bin/",
                 "",
                 "rm -rf $pdir/ipython-bootstrap",
                 "mkdir -p $pdir/ipython-bootstrap/lib",
@@ -201,18 +206,18 @@ def stage_start_bin(playground_config):
                 "{}/bin/start/run_minecraft_startup_console_commands".format(abs_pdir(playground_config.playground_name)),
                 "tmux_run_minecraft_startup_console_commands")
 
-    if playground_config.ipython_notebook_server_http_port:
-        write_playground_bash_script_to_staging_dir([
-            "cd {}/ipython-notebook-root".format(abs_pdir(playground_config.playground_name)),
-            "exec ../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py --ipython-dir=."
-        ], "/bin/start/start_ipython_notebook_server")
+    # if playground_config.ipython_notebook_server_http_port:
+    #     write_playground_bash_script_to_staging_dir([
+    #         "cd {}/ipython-notebook-root".format(abs_pdir(playground_config.playground_name)),
+    #         "exec ../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py --notebook-dir=."
+    #     ], "/bin/start/start_ipython_notebook_server")
 
-        write_tmux_session_restart_script_to_staging_dir(
-            playground_config.playground_name,
-            "py",
-            "{}/bin/start/start_ipython_notebook_server".format(abs_pdir(playground_config.playground_name)),
-            "tmux_restart_ipython_notebook_server")
+    #     write_tmux_session_restart_script_to_staging_dir(
+    #         playground_config.playground_name,
+    #         "py",
+    #         "{}/bin/start/start_ipython_notebook_server".format(abs_pdir(playground_config.playground_name)),
+    #         "tmux_restart_ipython_notebook_server")
 
 def get_tmux_start_scripts():
     # get all executable files in all playground bin/tmux dirs, absolute paths
-    return ssh_get("find playgrounds/*/bin/tmux -type f -executable | xargs -r -L 1 readlink -f").strip().split("\n")
+    return ssh_get("find playgrounds/*/bin/tmux -type f -executable | grep -v tmux_kill | xargs -r -L 1 readlink -f").strip().split("\n")

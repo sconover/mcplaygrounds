@@ -1,0 +1,7 @@
+#!/bin/bash -ex
+
+this_dir=$(dirname $0)
+ipython_instances_dir=$(readlink -f $this_dir/../../ipython-instances)
+
+find "$ipython_instances_dir/*/tmux_kill_ipython_instance" | xargs -r -L1 -ISCRIPT bash -c "SCRIPT"
+rm -rf $ipython_instances_dir/*
