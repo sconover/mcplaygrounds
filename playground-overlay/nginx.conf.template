@@ -16,7 +16,7 @@ location /${playground_name}/ {
 
   location /${playground_name}/admin/ {
     rewrite /${playground_name}/admin(.*) /$$1  break; # dollar-dollar for python templating pass-through
-    proxy_pass http://127.0.0.1:${grpc_craft_admin_web_port};
+    proxy_pass http://127.0.0.1:${grpc_craft_jupyter_notebook_support_web_port};
     proxy_http_version 1.1;
     proxy_set_header Upgrade $$http_upgrade; # dollar-dollar escapes to dollar w/ python string.Template
     proxy_set_header Connection "upgrade";

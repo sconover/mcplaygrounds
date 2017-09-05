@@ -145,6 +145,14 @@ def ssh_exec(remote_command):
     if subprocess.call(parts)!=0:
         raise Exception("FAILED: {}".format(cmd))
 
+def ssh_tunnel(local_port, remote_port):
+    parts = ssh_parts()
+    parts.extend(["-N", "-L", "{}:localhost:{}".format(local_port, remote_port)])
+    cmd = " ".join(parts)
+    print("> {}".format(cmd))
+    if subprocess.call(parts)!=0:
+        raise Exception("FAILED: {}".format(cmd))
+
 def rsync_exec(local_dir, remote_dir, more_flags=""):
     server_config = load_current_server_config()
     remote_dir_with_user_at_host = server_config.user_at_host + ":" + remote_dir

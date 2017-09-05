@@ -104,6 +104,13 @@ def start_minecraft(args):
     tmux_start(args.playground_name, "-mc", "tmux_restart_minecraft_server")
 add_simple_subparser(start_minecraft)
 
+def minecraft_tunnel_jvm(args):
+    playground_config = load_playground_config(args.playground_name, args.playground_config_file)
+    exec_minecraft_tunnel_jvm(playground_config)
+exec_minecraft_tunnel_jvm_parser = subparsers.add_parser("minecraft-tunnel-jvm", help='{} minecraft-tunnel-jvm')
+exec_minecraft_tunnel_jvm_parser.add_argument('playground_config_file', help='json config for playgrounds')
+exec_minecraft_tunnel_jvm_parser.set_defaults(func=minecraft_tunnel_jvm)
+
 def refresh_ipython(args):
     ssh_exec_all([
         "mkdir -p {}".format(ipython_data_dir(args.playground_name)),

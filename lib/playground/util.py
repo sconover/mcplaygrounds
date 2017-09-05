@@ -1,7 +1,7 @@
 import os
 import stat
 
-from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, scp_r_remote_to_local, rsync_exec
+from lib.core import ssh_exec, ssh_exec_all, ssh_get, scp_r, scp_r_remote_to_local, rsync_exec, ssh_tunnel
 from lib.playground_config import PlaygroundConfig, load_playground_config
 
 OVERLAY_STAGING_DIR = "/tmp/playground-staging"

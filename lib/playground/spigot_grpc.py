@@ -91,4 +91,8 @@ def spigot_server_startup_java_command(playground_config):
 		"-XX:+PrintAdaptiveSizePolicy -verbose:gc -XX:+PrintGCDetails " + \
 		"-XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution " + \
 		"-Xloggc:spigot-jvm-gc.log " + \
+        "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address={} ".format(playground_config.minecraft_server_jvm_debug_port) + \
 		"-jar spigot.jar"
+
+def exec_minecraft_tunnel_jvm(playground_config):
+    ssh_tunnel(5005, playground_config.minecraft_server_jvm_debug_port)

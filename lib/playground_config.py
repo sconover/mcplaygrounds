@@ -4,6 +4,7 @@ class PlaygroundConfig(BaseSettingsClass):
     def __init__(self):
         self.playground_name = None
         self.minecraft_server_port = None
+        self.minecraft_server_jvm_debug_port = None
         self.minecraft_server_variant = None
         self.minecraft_gamemode = None
         self.minecraft_force_gamemode = None
@@ -16,6 +17,7 @@ class PlaygroundConfig(BaseSettingsClass):
         self.raspberry_juice_sponge_plugin_port = None
         self.grpc_craft_port = None
         self.grpc_craft_admin_web_port = None
+        self.grpc_craft_jupyter_notebook_support_web_port = None
         self.sentry_io_client_key_aka_dsn = None
         self.circle_ci_api_token = None
         self.jupyter_notebook_readwrite_aws_s3_access_key = None
@@ -54,9 +56,11 @@ DEFAULT_CONFIG.minecraft_whitelist_json = "[]"
 DEFAULT_CONFIG.minecraft_startup_commands = []
 DEFAULT_CONFIG.teleport_destinations = {}
 DEFAULT_CONFIG.minecraft_server_port = False
+DEFAULT_CONFIG.minecraft_server_jvm_debug_port = False
 DEFAULT_CONFIG.raspberry_juice_sponge_plugin_port = False
 DEFAULT_CONFIG.grpc_craft_port = False
 DEFAULT_CONFIG.grpc_craft_admin_web_port = False
+DEFAULT_CONFIG.grpc_craft_jupyter_notebook_support_web_port = False
 DEFAULT_CONFIG.sentry_io_client_key_aka_dsn = False
 DEFAULT_CONFIG.jupyter_notebook_readwrite_aws_s3_access_key = None
 DEFAULT_CONFIG.jupyter_notebook_readwrite_aws_s3_secret_key = None
