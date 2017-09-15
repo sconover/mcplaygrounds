@@ -5,3 +5,4 @@ ipython_bin_path=${ipython_bin_path}
 ipython_url_path_prefix=${ipython_url_path_prefix}
 ipython_process_prefix=${playground_name}-
 grpc_craft_port=${grpc_craft_port}
+notebook_extension_backend_port=${grpc_craft_jupyter_notebook_support_web_port}
