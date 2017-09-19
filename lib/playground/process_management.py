@@ -153,70 +153,13 @@ def stage_start_bin(playground_config):
                 "exec " + spigot_server_startup_java_command(playground_config)
             ], "/bin/start/start_minecraft_server")
 
-        if not playground_config.minecraft_startup_commands or not len(playground_config.minecraft_startup_commands) > 0:
-            raise Exception( \
-                "Every playground that runs a minecraft server " + \
-                "MUST have at least one entry in minecraft_startup_commands")
-
-        minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_config.playground_name, c), playground_config.minecraft_startup_commands))
-
-        # this works for spigot servers as well. whatever "minecraft" server happens to be
-        # running will have these console commands run on it.
-
-        write_playground_bash_script_to_staging_dir([
-            "cd {}/minecraft-server".format(abs_pdir(playground_config.playground_name)),
-            "while ! nc -q 1 localhost " + str(playground_config.minecraft_server_port) + " </dev/null; do sleep 1; echo waiting; done && echo started && " + minecraft_console_commands
-        ], "/bin/start/run_minecraft_startup_console_commands")
-
-        write_tmux_session_restart_script_to_staging_dir(
-            playground_config.playground_name,
-            "mc-init",
-            "{}/bin/start/run_minecraft_startup_console_commands".format(abs_pdir(playground_config.playground_name)),
-            "tmux_run_minecraft_startup_console_commands")
-
         write_tmux_session_kill_script_to_staging_dir(playground_config.playground_name, "mc", "tmux_kill_minecraft_server")
 
-        # spawn off a tmux restart of minecraft console command runner, before starting the minecraft server.
-        # so, the command script poll the minecraft port, and once it successfully connects, it then
-        # executes the startup commands against the (presumably now active) minecraft server console.
-        #
-        # this is the best way I currently know of to achieve a "minecraft server console startup script",
-        # and it's not good.
         write_tmux_session_restart_script_to_staging_dir(
             playground_config.playground_name,
             "mc",
             "{}/bin/start/start_minecraft_server".format(abs_pdir(playground_config.playground_name)),
-            "tmux_restart_minecraft_server",
-            run_before="nohup {}/bin/tmux/tmux_run_minecraft_startup_console_commands &".format(abs_pdir(playground_config.playground_name)))
-
-        if playground_config.minecraft_startup_commands and len(playground_config.minecraft_startup_commands) > 0:
-            minecraft_console_commands = " && ".join(map(lambda c: tmux_send_command(playground_config.playground_name, c), playground_config.minecraft_startup_commands))
-
-            # this works for spigot servers as well. whatever "minecraft" server happens to be
-            # running will have these console commands run on it.
-
-            write_playground_bash_script_to_staging_dir([
-                "cd {}/minecraft-server".format(abs_pdir(playground_config.playground_name)),
-                "while ! nc -q 1 localhost " + str(playground_config.minecraft_server_port) + " </dev/null; do sleep 1; echo waiting; done && echo started && " + minecraft_console_commands
-            ], "/bin/start/run_minecraft_startup_console_commands")
-
-            write_tmux_session_restart_script_to_staging_dir(
-                playground_config.playground_name,
-                "mc-init",
-                "{}/bin/start/run_minecraft_startup_console_commands".format(abs_pdir(playground_config.playground_name)),
-                "tmux_run_minecraft_startup_console_commands")
-
-    # if playground_config.ipython_notebook_server_http_port:
-    #     write_playground_bash_script_to_staging_dir([
-    #         "cd {}/ipython-notebook-root".format(abs_pdir(playground_config.playground_name)),
-    #         "exec ../../../.python-virtualenv/bin/ipython notebook --config=ipython_server_config.py --notebook-dir=."
-    #     ], "/bin/start/start_ipython_notebook_server")
-
-    #     write_tmux_session_restart_script_to_staging_dir(
-    #         playground_config.playground_name,
-    #         "py",
-    #         "{}/bin/start/start_ipython_notebook_server".format(abs_pdir(playground_config.playground_name)),
-    #         "tmux_restart_ipython_notebook_server")
+            "tmux_restart_minecraft_server")
 
 def get_tmux_start_scripts():
     # get all executable files in all playground bin/tmux dirs, absolute paths
