@@ -133,6 +133,7 @@ def stage_start_bin(playground_config):
                 "# are changed via application deployment",
                 "mkdir -p $pdir/spigot-server/plugins",
                 "ln -nsf $pdir/deployment/current/grpc-craft-plugin/grpc-craft-plugin.jar $pdir/spigot-server/plugins/grpc-craft-plugin.jar",
+                "ln -nsf $pdir/deployment/current/spigot/spigot.jar $pdir/spigot-server/spigot.jar",
                 "rm -rf $pdir/spigot-server/bin",
                 "ln -nsf $pdir/deployment/current/grpc-craft-plugin/system_exec_bin $pdir/spigot-server/bin",
                 "ln -sf $pdir/spigot-server/ipython-automation.properties $pdir/spigot-server/bin/ipython-automation.properties", # ugh, probably need some config/injection reform one of these days
