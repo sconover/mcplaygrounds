@@ -18,6 +18,7 @@ class PlaygroundConfig(BaseSettingsClass):
         self.grpc_craft_port = None
         self.grpc_craft_admin_web_port = None
         self.grpc_craft_jupyter_notebook_support_web_port = None
+        self.grpc_craft_prometheus_metrics_scrape_web_port = None
         self.sentry_io_client_key_aka_dsn = None
         self.circle_ci_api_token = None
         self.jupyter_notebook_readwrite_aws_s3_access_key = None
@@ -61,6 +62,7 @@ DEFAULT_CONFIG.raspberry_juice_sponge_plugin_port = False
 DEFAULT_CONFIG.grpc_craft_port = False
 DEFAULT_CONFIG.grpc_craft_admin_web_port = False
 DEFAULT_CONFIG.grpc_craft_jupyter_notebook_support_web_port = False
+DEFAULT_CONFIG.grpc_craft_prometheus_metrics_scrape_web_port = False
 DEFAULT_CONFIG.sentry_io_client_key_aka_dsn = False
 DEFAULT_CONFIG.jupyter_notebook_readwrite_aws_s3_access_key = None
 DEFAULT_CONFIG.jupyter_notebook_readwrite_aws_s3_secret_key = None
