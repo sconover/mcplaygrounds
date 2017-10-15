@@ -65,11 +65,19 @@ location /${playground_name}/ {
     ';
   }
 
-  location /bar/deploy-minecraft-artifact {
+  location /${playground_name}/deploy-minecraft-artifact {
     limit_except POST {
       deny all;
     }
     content_by_lua_file /home/ubuntu/playgrounds/bar/nginx_support/handle_deploy_minecraft_http_post.lua;
+  }
+
+  location /${playground_name}/metrics/ {
+    proxy_pass http://127.0.0.1:${grpc_craft_prometheus_metrics_scrape_web_port}/metrics;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $$http_upgrade; # dollar-dollar escapes to dollar w/ python string.Template
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Origin "";
   }
 
   # BIN_PATHS_GO_HERE
